@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Substack Print</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>The Substack Print</h1>
+            <p>turn your favorite Substack into a printable newspaper</p>
+            <p class="disclaimer">This is neither affiliated with nor endorsed by Substack HQ. It was made by artist & mischief-maker  <a href="https://rawandferal.substack.com" target="_blank" rel="noopener noreferrer">raw & feral</a>. If you like it, you can support my art with a free or paid subscription to  <a href="https://rawandferal.substack.com" target="_blank" rel="noopener noreferrer">raw & feral</a>, where I write about making creative shenanigans like this!</p>
+        </header>
+        
+        <div class="input-section">
+            <form id="substack-form">
+                <label for="substack-url">Enter Substack URL:</label>
+                <input 
+                    type="text" 
+                    id="substack-url" 
+                    value="rawandferal.substack.com"
+                    placeholder="rawandferal.substack.com or https://example.substack.com"
+                    required
+                >
+                <div class="form-controls">
+                    <button type="submit">Go analog!</button>
+                    <div class="mode-select-wrapper">
+                        <span class="mode-display">change mode</span>
+                        <select id="mode-select" name="mode" class="mode-button">
+                            <option value="normal" selected>normal</option>
+                            <option value="evil">evil</option>
+                            <option value="chris-best">Chris Best</option>
+                            <option value="chris-worst">Chris Worst</option>
+                        </select>
+                    </div>
+                </div>
+            </form>
+            <div id="loading" class="hidden">Loading articles...</div>
+            <div id="error" class="error hidden"></div>
+        </div>
+        
+        <div id="newsletter-container" class="hidden">
+            <div class="newsletter-controls">
+                <button onclick="window.print()">Print as PDF</button>
+            </div>
+            <div id="newsletter" class="newsletter">
+                <!-- Newsletter content will be inserted here -->
+            </div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
+

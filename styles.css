@@ -1,0 +1,2216 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.newsletter-page * {
+    max-width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.newsletter-content * {
+    max-width: 100%;
+}
+
+.article-columns-three * {
+    max-width: 100%;
+}
+
+body {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    background-color: #FFFCF3;
+    color: #000;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0px;
+    margin-top: 20px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 0px;
+    padding: 0px;
+}
+
+header h1 {
+    font-size: 4em;
+    margin-bottom: 2px !important;
+    padding-bottom: 0 !important;
+    line-height: 1;
+    color: #000;
+    font-family: 'Manufacturing Consent', serif;
+    font-weight: light;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+header p {
+    color: #000;
+    font-size: 1.1em;
+    font-style: italic;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    margin-bottom: 20px;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    line-height: 1.2;
+}
+
+header .disclaimer {
+    color: #000;
+    font-size: 0.9em;
+    font-style: normal;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    line-height: 1.6;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.input-section {
+    background: none;
+    padding: 30px 30px 0 30px;
+    border-radius: 8px;
+    margin-bottom: 0;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+    max-width: 100%;
+}
+
+.form-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 10px;
+    width: 100%;
+}
+
+.mode-select-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.mode-select-wrapper select {
+    position: relative;
+    z-index: 10;
+}
+
+.mode-display {
+    position: absolute;
+    left: calc(50% - 10px);
+    top: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    color: #000;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: 1em;
+    z-index: 1;
+    text-align: center;
+    white-space: nowrap;
+}
+
+#mode-select.mode-button {
+    padding: 12px 24px;
+    font-size: 1em;
+    border: 1px solid #FF8C00;
+    border-radius: 25px;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    background: transparent;
+    color: transparent;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23000' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 40px;
+    width: auto;
+    min-width: 150px;
+    position: relative;
+    z-index: 2;
+}
+
+#mode-select.mode-button:focus {
+    outline: none;
+    border-color: #FF8C00;
+}
+
+#mode-select.mode-button option {
+    color: #000;
+}
+
+label {
+    font-weight: bold;
+    font-size: 1em;
+    color: #000;
+    font-family: 'Georgia', 'Times New Roman', serif;
+}
+
+input[type="text"],
+input[type="url"] {
+    padding: 12px;
+    font-size: 1em;
+    border: 1px solid #FF8C00;
+    border-radius: 8px;
+    font-family: inherit;
+    background: #FFFCF3;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+input[type="text"]:focus,
+input[type="url"]:focus {
+    outline: none;
+    border-color: #FF8C00;
+}
+
+.input-section p,
+.input-section .note {
+    font-size: 0.9em;
+    color: #000;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    margin-top: 5px;
+}
+
+button {
+    padding: 12px 24px;
+    font-size: 1em;
+    background-color: #FF8C00;
+    color: white;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    font-weight: normal;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #FF7A00;
+}
+
+form button[type="submit"] {
+    background-color: #FF8C00;
+    color: white;
+    margin: 0;
+    display: inline-block;
+    width: auto;
+}
+
+.form-controls button[type="submit"] {
+    margin: 0;
+    display: inline-block;
+}
+
+.newsletter-controls button:hover {
+    background-color: #FFFCF3;
+    border-color: #FF8C00;
+}
+
+#loading {
+    text-align: center;
+    padding: 20px;
+    font-size: 1.1em;
+    color: #000;
+    font-family: 'Georgia', 'Times New Roman', serif;
+}
+
+.error {
+    background-color: #fee;
+    color: #c33;
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 15px;
+    font-family: 'Georgia', 'Times New Roman', serif;
+}
+
+.hidden {
+    display: none;
+}
+
+#newsletter-container {
+    margin-top: 0;
+}
+
+
+#newsletter {
+    background-color: transparent;
+    min-height: 400px;
+    padding: 20px;
+    border-radius: 0;
+}
+
+/* Disclaimer text styling */
+.disclaimer,
+header + p,
+header ~ p {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    color: #000;
+    font-size: 0.9em;
+    line-height: 1.6;
+    text-align: center;
+    margin: 20px 0;
+}
+
+.disclaimer a,
+header + p a,
+header ~ p a {
+    color: #0066CC;
+    text-decoration: underline;
+}
+
+.newsletter-controls {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.newsletter-controls button {
+    margin: 0 5px;
+    background-color: transparent;
+    color: #000;
+    border: 1px solid #FF8C00;
+    border-radius: 25px;
+    font-size: 1em;
+    font-family: 'Georgia', 'Times New Roman', serif;
+}
+
+.newsletter-controls button:first-child {
+    margin-left: 0;
+}
+
+.newsletter-controls button:last-child {
+    margin-right: 0;
+}
+
+/* Newspaper Layout */
+.newsletter {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    background: transparent;
+    padding: 20px 0;
+    box-shadow: none;
+    border-radius: 0;
+}
+
+.newsletter-page {
+    width: 8.5in;
+    height: 11in;
+    padding: 0.25in;
+    background: white;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    margin: 0 auto;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    page-break-after: always;
+    page-break-inside: avoid;
+    box-sizing: border-box;
+}
+
+.newsletter-page.mode-evil {
+    background-image: url('./backgrounds/test-background.jpg') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+}
+
+.newsletter-page.mode-chris-best {
+    background-image: url('./backgrounds/chris-best.jpg') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+}
+
+.newsletter-page.mode-chris-worst {
+    background-image: url('./backgrounds/chris-worst.jpg') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+}
+
+/* Page numbers for pages 2+ */
+.newsletter-page .page-number {
+    position: absolute;
+    bottom: 0.25in;
+    right: 0.25in;
+    font-size: 0.75em;
+    font-family: 'Times New Roman', serif;
+    color: #333;
+    z-index: 10;
+}
+
+/* Masthead */
+.newsletter-masthead {
+    padding: 0;
+    margin-bottom: 0;
+    flex-shrink: 0;
+    text-align: center;
+    position: relative;
+}
+
+.newsletter-content {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    flex: 1;
+    overflow: hidden;
+    max-height: calc(11in - 0.5in);
+    box-sizing: border-box;
+    min-height: 0;
+    width: 8in;
+    max-width: 8in;
+}
+
+.masthead-top-url {
+    position: absolute;
+    top: 0;
+    right: 0;
+    font-size: 0.65em;
+    font-family: 'Times New Roman', serif;
+    color: #333;
+}
+
+.masthead-title {
+    font-size: 3.5em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    font-family: 'Times New Roman', serif;
+    line-height: 1.1;
+    margin-bottom: 8px;
+    margin-top: 0.25in;
+    color: #000;
+}
+
+.masthead-tagline {
+    font-size: 0.9em;
+    font-style: italic;
+    font-family: 'Times New Roman', serif;
+    color: #333;
+    line-height: 1.3;
+    margin-bottom: 12px;
+}
+
+.masthead-divider {
+    border-top: 1px solid #000;
+    margin: 4px 0;
+}
+
+.masthead-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75em;
+    font-family: 'Times New Roman', serif;
+    font-weight: bold;
+    color: #000;
+    padding: 2px 0;
+}
+
+.masthead-info-row .volume {
+    text-align: left;
+}
+
+.masthead-info-row .date {
+    text-align: center;
+    flex: 1;
+}
+
+.masthead-info-row .established {
+    text-align: right;
+}
+
+/* Newsletter Content - duplicate removed, using definition at line 178 */
+
+.newsletter-content > .article-featured:first-child {
+    margin-top: 0;
+    padding-top: 0;
+}
+
+/* Featured Article */
+.article-featured {
+    margin-bottom: 15px;
+    margin-top: 0;
+    padding-top: 0;
+    position: relative;
+}
+
+.article-featured > *:first-child {
+    margin-top: 0;
+    padding-top: 0;
+}
+
+.article-columns {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 0;
+    column-gap: 0;
+    row-gap: 0;
+    align-items: start;
+    align-content: start;
+    margin-top: 0;
+    padding-top: 0;
+}
+
+
+.article-columns > * {
+    margin-top: 0;
+    padding-top: 0;
+}
+
+.article-col-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding-right: 20px;
+    border-right: 1px solid #000;
+    margin-right: 0;
+    margin-top: 0;
+    padding-top: 0;
+    align-items: stretch;
+    align-content: start;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+
+.article-col-left > *:first-child {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+
+.article-col-right {
+    display: flex;
+    flex-direction: column;
+    padding-left: 20px;
+    margin-left: 0;
+    margin-top: 0;
+    padding-top: 0;
+    align-items: stretch;
+    align-content: start;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.article-col-right > *:first-child {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    line-height: 1;
+}
+
+.article-title {
+    font-size: 1.5em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0;
+    margin-top: 0.25in;
+    line-height: 1.2;
+    font-family: 'Times New Roman', serif;
+    text-align: center;
+    position: relative;
+    padding-bottom: 0;
+}
+
+
+.article-subtitle {
+    font-size: 0.9em;
+    font-style: italic;
+    font-family: 'Times New Roman', serif;
+    text-align: center;
+    margin-top: 4px;
+    margin-bottom: 12px;
+    color: #333;
+    line-height: 1.3;
+    position: relative;
+    padding-bottom: 18px;
+}
+
+.article-subtitle::after {
+    content: '';
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50%;
+    height: 1px;
+    background: #000;
+}
+
+@media print { 
+    .article-subtitle::after {
+    content: '';
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50%;
+    height: 1px;
+    background: none;
+    border-top: 1px solid #000;
+    }
+}
+
+/* If no subtitle exists, add divider to title */
+.article-title.no-subtitle {
+    padding-bottom: 18px;
+    margin-bottom: 12px;
+}
+
+/* Disable ::after pseudo-element bars for front page titles since we're using HTML elements now */
+.article-title.no-subtitle::after,
+.article-title.has-subtitle::after {
+    display: none;
+}
+
+/* Front page titles use HTML elements instead of ::after */
+.article-col-right .article-title::after,
+.article-col-left .article-title::after {
+    display: none;
+}
+
+.article-col-right .article-title {
+    font-size: 1.8em;
+    letter-spacing: 1.5px;
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+    line-height: 1.2;
+}
+
+.article-col-left .article-title {
+    font-size: 1.2em;
+    letter-spacing: 0.8px;
+    margin-top: 0;
+}
+
+.article-col-left .article-section:first-child .article-title {
+    margin-top: 0.25in !important;
+    padding-top: 0;
+}
+
+.article-section {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #000;
+    padding-top: 0;
+    margin-top: 0;
+}
+
+.article-number {
+    font-size: 0.7em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #666;
+    margin-bottom: 4px;
+    font-family: 'Times New Roman', serif;
+}
+
+.article-section:first-child {
+    padding-top: 0;
+    margin-top: 0;
+}
+
+.article-col-left .article-section:first-child {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+
+.article-col-left .article-section:first-child .article-title {
+    margin-top: 0.25in !important;
+    padding-top: 0 !important;
+}
+
+.article-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.article-snippet {
+    font-size: 0.85em;
+    line-height: 1.5;
+    text-align: justify;
+    widows: 2 !important; /* Prevent single words at end of line - require at least 2 words */
+    orphans: 2 !important; /* Prevent single words at start of line - require at least 2 words */
+    margin-bottom: 8px;
+}
+
+.article-image {
+    margin: 12px 0;
+    width: 100%;
+}
+
+.article-image img {
+    max-width: 100%;
+    width: 100%;
+    height: auto;
+    max-height: 2.5in;
+    object-fit: contain;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.article-description {
+    font-size: 0.8em;
+    font-style: italic;
+    color: #555;
+    margin-bottom: 12px;
+    line-height: 1.4;
+    text-align: justify;
+}
+
+.article-snippet p {
+    margin-bottom: 0;
+    text-align: justify;
+    text-indent: 0.25in;
+    widows: 2 !important; /* Prevent single words at end of line */
+    orphans: 2 !important; /* Prevent single words at start of line */
+}
+
+.article-snippet p:first-child {
+    text-indent: 0;
+}
+
+/* Style horizontal dividers (hr) in article content to span half width and be centered */
+.article-content hr,
+.article-content-right hr,
+.article-snippet hr,
+.article-col-left hr,
+.article-col-right hr {
+    width: 50%;
+    margin-left: auto;
+    margin-right: auto;
+    border: none;
+    border-top: 1px solid #000;
+    height: 0;
+    margin-top: 0.25in;
+    margin-bottom: 0.25in;
+}
+
+.article-title-small {
+    font-size: 1.3em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    line-height: 1.2;
+    font-family: 'Times New Roman', serif;
+}
+
+/* Wrapper to keep images and captions together - prevent column breaks */
+.article-columns-three-css .image-with-caption-wrapper,
+.article-content .image-with-caption-wrapper,
+.article-content-right .image-with-caption-wrapper {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    -webkit-column-break-inside: avoid !important;
+    -moz-column-break-inside: avoid !important;
+    column-break-inside: avoid !important;
+    display: block;
+    margin-bottom: 12px;
+}
+
+.featured-image {
+    margin-bottom: 12px;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    line-height: 1;
+    display: block;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    -webkit-column-break-inside: avoid !important;
+    -moz-column-break-inside: avoid !important;
+    column-break-inside: avoid !important;
+}
+
+.featured-image + .article-title {
+    margin-top: 8px;
+}
+
+.image-caption + .article-title,
+.featured-image + h2 {
+    margin-top: 6px;
+}
+
+.article-col-right .featured-image .image-caption + .article-title {
+    margin-top: 6px !important;
+}
+
+.article-col-right .featured-image:first-child {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    line-height: 1;
+}
+
+.article-col-right > .featured-image:first-child {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    line-height: 1;
+}
+
+.featured-image img {
+    max-width: 100%;
+    width: 100%;
+    height: auto;
+    max-height: 4in;
+    object-fit: contain;
+    display: block;
+    margin-bottom: 6px;
+    margin-top: 0;
+    padding-top: 0;
+}
+
+.image-caption {
+    font-size: 0.7em;
+    font-style: italic;
+    margin-top: 4px;
+    margin-bottom: 16px;
+    color: #333;
+    line-height: 1.4;
+    text-align: center;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    -webkit-column-break-inside: avoid !important;
+    -moz-column-break-inside: avoid !important;
+    column-break-inside: avoid !important;
+}
+
+.article-col-right .featured-image .image-caption {
+    margin-bottom: 4px !important;
+}
+
+.article-col-right .featured-image + .article-title {
+    margin-top: 6px !important;
+}
+
+.article-content {
+    font-size: 0.9em;
+    line-height: 1.6;
+    text-align: justify;
+    flex: 1;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.article-content-right {
+    font-size: 0.85em;
+    line-height: 1.5;
+    text-align: justify;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.article-content p,
+.article-content-right p {
+    margin-bottom: 0;
+    text-align: justify;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    text-indent: 0.25in;
+}
+
+.article-content p:first-child,
+.article-content-right p:first-child {
+    text-indent: 0;
+}
+
+.article-content h2,
+.article-content-right h2 {
+    font-size: 1.3em;
+    margin: 0.25in 0 8px 0;
+    font-weight: bold;
+    text-align: center;
+}
+
+.article-content h3,
+.article-content-right h3 {
+    font-size: 1.1em;
+    margin: 0.25in 0 6px 0;
+    font-weight: bold;
+    text-align: center;
+}
+
+.article-content img,
+.article-content-right img {
+    max-width: 100%;
+    width: 100%;
+    height: auto;
+    max-height: 3in;
+    object-fit: contain;
+    margin: 10px 0;
+    display: block;
+}
+
+.article-content blockquote,
+.article-content-right blockquote {
+    border-left: 3px solid #ccc;
+    padding-left: 15px;
+    margin: 12px 0;
+    font-style: italic;
+    color: #555;
+    text-align: justify;
+}
+
+.article-content ul,
+.article-content ol,
+.article-content-right ul,
+.article-content-right ol {
+    margin: 12px 0;
+    padding-left: 1.5em;
+    padding-right: 0;
+}
+
+.article-content a,
+.article-content-right a {
+    color: #000;
+    text-decoration: none;
+}
+
+.article-content strong,
+.article-content-right strong {
+    font-weight: bold;
+}
+
+.article-content em,
+.article-content-right em {
+    font-style: italic;
+}
+
+.article-continued {
+    font-size: 0.7em;
+    font-style: italic;
+    margin-top: 6px;
+    color: #666;
+    text-align: right;
+}
+
+/* Articles Columns */
+.articles-columns {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    column-gap: 15px;
+}
+
+.article-column {
+    display: flex;
+    flex-direction: column;
+}
+
+.article-columns-three {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    column-gap: 0;
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+}
+
+/* CSS Columns version for natural content flow */
+.article-columns-three-css {
+    column-count: 3;
+    column-gap: 0.25in;
+    column-fill: balance; /* Reverted - auto breaks column layout */
+    column-rule: 1px solid #000;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-height: calc(11in - 0.5in);
+    height: auto;
+    max-height: calc(11in - 0.5in);
+    overflow: hidden;
+    position: relative;
+    font-size: 0.85em;
+    line-height: 1.5;
+}
+
+/* Ensure pages with minimal content still display */
+.newsletter-page:last-child .article-columns-three-css {
+    min-height: auto;
+    height: auto;
+}
+
+.article-columns-three-css p {
+    margin-bottom: 0;
+    text-align: justify;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: normal; /* Allow normal word breaking, sentences can split */
+    max-width: 100%;
+    orphans: 0; /* Allow paragraphs to split freely - no minimum lines required */
+    widows: 0; /* Allow paragraphs to split freely - no minimum lines required */
+    box-sizing: border-box;
+    page-break-inside: auto !important; /* Allow page breaks within paragraphs */
+    break-inside: auto !important; /* Allow column breaks within paragraphs */
+    -webkit-column-break-inside: auto !important;
+    -moz-column-break-inside: auto !important;
+    column-break-inside: auto !important;
+    text-indent: 0.25in;
+}
+
+/* Ensure content following headings has at least one visual line (as rendered in column) to prevent orphaned headings */
+/* The orphans property works on visual lines - lines as they appear when rendered, accounting for column width */
+.article-columns-three-css h1 + p,
+.article-columns-three-css h2 + p,
+.article-columns-three-css h3 + p,
+.article-columns-three-css h4 + p,
+.article-columns-three-css h5 + p,
+.article-columns-three-css h6 + p,
+.article-columns-three-css .article-title + p,
+.article-columns-three-css h1 + ul,
+.article-columns-three-css h2 + ul,
+.article-columns-three-css h3 + ul,
+.article-columns-three-css h4 + ul,
+.article-columns-three-css h5 + ul,
+.article-columns-three-css h6 + ul,
+.article-columns-three-css .article-title + ul,
+.article-columns-three-css h1 + ol,
+.article-columns-three-css h2 + ol,
+.article-columns-three-css h3 + ol,
+.article-columns-three-css h4 + ol,
+.article-columns-three-css h5 + ol,
+.article-columns-three-css h6 + ol,
+.article-columns-three-css .article-title + ol,
+.article-columns-three-css h1 + div,
+.article-columns-three-css h2 + div,
+.article-columns-three-css h3 + div,
+.article-columns-three-css h4 + div,
+.article-columns-three-css h5 + div,
+.article-columns-three-css h6 + div,
+.article-columns-three-css .article-title + div {
+    orphans: 2 !important; /* Require at least 2 visual lines (as rendered, accounting for column width) must stay with the heading */
+    widows: 1;
+    break-before: avoid !important; /* Prevent break before content that follows heading */
+    -webkit-column-break-before: avoid !important;
+    -moz-column-break-before: avoid !important;
+    column-break-before: avoid !important;
+    break-inside: auto; /* Allow breaks within the content, but keep first visual line with heading */
+}
+
+/* Add space before footnotes sections - but only for the container, not internal elements */
+/* Target footnotes sections by common class names - only add spacing to the top-level container */
+.article-columns-three-css > [class*="footnote"]:first-of-type,
+.article-columns-three-css > [class*="footnotes"]:first-of-type,
+.article-columns-three-css > [class*="note"]:first-of-type,
+.article-columns-three-css > [class*="notes"]:first-of-type,
+.article-columns-three-css > [id*="footnote"]:first-of-type,
+.article-columns-three-css > [id*="footnotes"]:first-of-type,
+.article-columns-three-css > [id*="note"]:first-of-type,
+.article-columns-three-css > [id*="notes"]:first-of-type {
+    margin-top: 0.25in !important;
+    padding-top: 0 !important; /* Don't add padding to the container itself */
+}
+
+/* Don't add spacing to child elements within footnotes sections */
+.article-columns-three-css [class*="footnote"] *,
+.article-columns-three-css [class*="footnotes"] *,
+.article-columns-three-css [class*="note"] *,
+.article-columns-three-css [class*="notes"] *,
+.article-columns-three-css [id*="footnote"] *,
+.article-columns-three-css [id*="footnotes"] *,
+.article-columns-three-css [id*="note"] *,
+.article-columns-three-css [id*="notes"] * {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+
+/* Target headings that indicate footnotes (class added by JavaScript) */
+/* Only add spacing before the heading itself, not to its content */
+.article-columns-three-css h2.footnotes-heading,
+.article-columns-three-css h3.footnotes-heading,
+.article-columns-three-css h4.footnotes-heading,
+.article-columns-three-css h5.footnotes-heading,
+.article-columns-three-css h6.footnotes-heading {
+    margin-top: 0.25in !important;
+    padding-top: 0 !important; /* Use margin-top only, not padding-top */
+}
+
+/* Reset spacing for content that follows footnotes headings */
+.article-columns-three-css h2.footnotes-heading + *,
+.article-columns-three-css h3.footnotes-heading + *,
+.article-columns-three-css h4.footnotes-heading + *,
+.article-columns-three-css h5.footnotes-heading + *,
+.article-columns-three-css h6.footnotes-heading + * {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+
+/* Target horizontal rules that mark footnotes sections - spacing is on the hr itself */
+
+/* Add space before horizontal rules that mark footnotes */
+.article-columns-three-css hr.footnotes-divider {
+    margin-top: 0.25in !important;
+    margin-bottom: 0 !important;
+    border: none;
+    border-top: 1px solid #000;
+    height: 0;
+}
+
+/* General hr styling - but don't add extra spacing to hr elements within footnotes sections */
+.article-columns-three-css hr:not(.footnotes-divider) {
+    margin-top: 0.25in !important;
+    margin-bottom: 0.25in !important;
+    border: none;
+    border-top: 1px solid #000;
+    height: 0;
+    width: 50%; /* Span half the column width */
+    margin-left: auto; /* Center horizontally */
+    margin-right: auto;
+}
+
+/* Reset spacing for hr elements inside footnotes sections */
+.article-columns-three-css [class*="footnote"] hr,
+.article-columns-three-css [class*="footnotes"] hr,
+.article-columns-three-css [class*="note"] hr,
+.article-columns-three-css [class*="notes"] hr,
+.article-columns-three-css [id*="footnote"] hr,
+.article-columns-three-css [id*="footnotes"] hr,
+.article-columns-three-css [id*="note"] hr,
+.article-columns-three-css [id*="notes"] hr {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+/* Style footnote references in main text as small superscript */
+.article-columns-three-css a[href*="#fn"],
+.article-columns-three-css a[href*="#footnote"],
+.article-columns-three-css sup a,
+/* Style footnote references as superscript in main text */
+.article-columns-three-css .footnote-ref,
+.article-columns-three-css sup.footnote-ref,
+.article-content .footnote-ref,
+.article-content sup.footnote-ref,
+.article-content-right .footnote-ref,
+.article-content-right sup.footnote-ref {
+    vertical-align: super;
+    font-size: 0.7em !important;
+    line-height: 1;
+    font-weight: normal;
+    display: inline;
+}
+
+/* Also style sup elements as small superscript (for non-footnote superscripts) */
+.article-columns-three-css sup:not(.footnote-ref),
+.article-content sup:not(.footnote-ref),
+.article-content-right sup:not(.footnote-ref) {
+    vertical-align: super;
+    font-size: 0.7em !important;
+    line-height: 1;
+    font-weight: normal;
+}
+
+/* Style footnotes section - same font size as body */
+.article-columns-three-css [class*="footnote"],
+.article-columns-three-css [class*="footnotes"],
+.article-columns-three-css [id*="footnote"],
+.article-columns-three-css [id*="footnotes"] {
+    font-size: inherit; /* Same size as body text */
+}
+
+/* Style the "Footnotes:" label div added by JavaScript */
+.article-columns-three-css .footnotes-label {
+    font-weight: bold;
+    display: block;
+    margin-top: 0.25in !important; /* Space above footnotes section */
+    margin-bottom: 0.125in;
+    font-size: inherit; /* Same size as body text */
+}
+
+/* Prevent "Footnotes:" from appearing via CSS ::before on any elements */
+.article-columns-three-css [class*="footnote"]::before,
+.article-columns-three-css [class*="footnotes"]::before,
+.article-columns-three-css [id*="footnote"]::before,
+.article-columns-three-css [id*="footnotes"]::before,
+.article-columns-three-css [class*="footnote"] li::before,
+.article-columns-three-css [class*="footnotes"] li::before,
+.article-columns-three-css [id*="footnote"] li::before,
+.article-columns-three-css [id*="footnotes"] li::before,
+.article-columns-three-css [class*="footnote"] > *::before,
+.article-columns-three-css [class*="footnotes"] > *::before,
+.article-columns-three-css [id*="footnote"] > *::before,
+.article-columns-three-css [id*="footnotes"] > *::before {
+    content: none !important;
+}
+
+/* Style footnote list - numbers are manually added as text */
+.article-columns-three-css [class*="footnote"] ol.footnotes-list,
+.article-columns-three-css [class*="footnotes"] ol.footnotes-list,
+.article-columns-three-css [id*="footnote"] ol.footnotes-list,
+.article-columns-three-css [id*="footnotes"] ol.footnotes-list,
+.article-columns-three-css ol.footnotes-list {
+    margin: 0;
+    padding-left: 0;
+    list-style-type: none; /* No automatic numbering, we add it manually */
+    list-style-position: inside;
+    font-size: inherit; /* Same size as body text */
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+
+/* Style footnote list items - number is part of text content */
+/* CRITICAL: Ensure footnotes render on single line - remove line breaks */
+.article-columns-three-css [class*="footnote"] li,
+.article-columns-three-css [class*="footnotes"] li,
+.article-columns-three-css [id*="footnote"] li,
+.article-columns-three-css [id*="footnotes"] li,
+.article-columns-three-css ol.footnotes-list li,
+.article-columns-three-css ul li,
+.article-columns-three-css ol li {
+    margin-bottom: 0.125in;
+    line-height: 1.4;
+    text-align: justify;
+    font-size: inherit; /* Same size as body text */
+    display: block !important;
+    list-style-type: none !important; /* No list styling, number is in text */
+    list-style-position: inside !important;
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    -webkit-column-break-inside: avoid !important;
+    -moz-column-break-inside: avoid !important;
+    column-break-inside: avoid !important;
+    white-space: normal !important;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    /* Prevent any visual line breaks between number and text */
+    word-break: normal;
+    /* Ensure number and text stay together - prevent breaking after number */
+    text-indent: 0 !important;
+}
+
+/* CRITICAL: Prevent line break immediately after number */
+.article-columns-three-css ol.footnotes-list li,
+.article-columns-three-css [class*="footnote"] li,
+.article-columns-three-css [class*="footnotes"] li {
+    /* Use display: block but ensure content flows inline */
+    display: block !important;
+}
+
+/* Ensure spans with nowrap don't break - CRITICAL for keeping number with text */
+.article-columns-three-css ol.footnotes-list li span,
+.article-columns-three-css [class*="footnote"] li span,
+.article-columns-three-css [class*="footnotes"] li span {
+    white-space: nowrap !important;
+    display: inline !important;
+    /* Prevent breaking in CSS columns */
+    -webkit-column-break-inside: avoid !important;
+    break-inside: avoid !important;
+}
+
+/* Prevent breaking inside list items */
+.article-columns-three-css ol.footnotes-list li {
+    -webkit-column-break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    /* Prevent orphans - keep at least first line with number */
+    orphans: 2 !important;
+}
+
+/* CRITICAL: Prevent line breaks after numbers in footnotes */
+.article-columns-three-css [class*="footnote"] li::first-line,
+.article-columns-three-css [class*="footnotes"] li::first-line,
+.article-columns-three-css [id*="footnote"] li::first-line,
+.article-columns-three-css [id*="footnotes"] li::first-line,
+.article-columns-three-css ol.footnotes-list li::first-line {
+    /* Ensure number stays with text on first line */
+    white-space: nowrap;
+}
+
+/* Force footnote numbers and text to stay together */
+.article-columns-three-css ol.footnotes-list li,
+.article-columns-three-css [class*="footnote"] li,
+.article-columns-three-css [class*="footnotes"] li {
+    /* Use a non-breaking space approach - wrap number and first word together */
+    text-indent: 0 !important;
+    /* Prevent breaking after the number */
+    word-spacing: normal;
+}
+
+/* Prevent line break immediately after number - wrap first few characters */
+.article-columns-three-css ol.footnotes-list li::before {
+    content: '';
+    display: inline-block;
+    width: 0;
+}
+
+/* Use CSS to prevent breaking after number pattern */
+.article-columns-three-css ol.footnotes-list li {
+    /* Ensure the number and period don't break from text */
+    unicode-bidi: embed;
+}
+
+/* Remove all line breaks from footnote content */
+.article-columns-three-css [class*="footnote"] li br,
+.article-columns-three-css [class*="footnotes"] li br,
+.article-columns-three-css [id*="footnote"] li br,
+.article-columns-three-css [id*="footnotes"] li br,
+.article-columns-three-css ol.footnotes-list li br {
+    display: none !important;
+}
+
+/* Ensure footnote text content has no line breaks */
+.article-columns-three-css [class*="footnote"] li,
+.article-columns-three-css [class*="footnotes"] li,
+.article-columns-three-css [id*="footnote"] li,
+.article-columns-three-css [id*="footnotes"] li,
+.article-columns-three-css ol.footnotes-list li {
+    white-space: normal !important;
+}
+
+/* Force single-line rendering - if content would wrap, it will wrap naturally but number stays with text */
+.article-columns-three-css ol.footnotes-list li .footnote-number-text {
+    white-space: nowrap; /* Number and period stay together */
+}
+
+/* Make the first few characters (the number) bold - REMOVED, numbers should not be bold */
+/* .article-columns-three-css ol.footnotes-list li::first-line {
+    font-weight: bold;
+} */
+
+/* Better approach: wrap number in a span via JavaScript and style it */
+/* Remove bold - footnotes should not be bold */
+.article-columns-three-css ol.footnotes-list li .footnote-number-text {
+    font-weight: normal;
+    margin-right: 0.125in;
+}
+
+/* Ensure ALL content inside list items is inline and flows together */
+.article-columns-three-css [class*="footnote"] li *,
+.article-columns-three-css [class*="footnotes"] li *,
+.article-columns-three-css [id*="footnote"] li *,
+.article-columns-three-css [id*="footnotes"] li *,
+.article-columns-three-css ol.footnotes-list li * {
+    display: inline !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: inherit;
+}
+
+/* Style the footnote content wrapper */
+.article-columns-three-css ol.footnotes-list li .footnote-content {
+    display: inline !important;
+    width: auto !important;
+    break-inside: avoid;
+}
+
+/* Specifically target paragraphs and divs */
+.article-columns-three-css [class*="footnote"] li p,
+.article-columns-three-css [class*="footnotes"] li p,
+.article-columns-three-css [id*="footnote"] li p,
+.article-columns-three-css [id*="footnotes"] li p,
+.article-columns-three-css ol.footnotes-list li p,
+.article-columns-three-css [class*="footnote"] li div,
+.article-columns-three-css [class*="footnotes"] li div,
+.article-columns-three-css [id*="footnote"] li div,
+.article-columns-three-css [id*="footnotes"] li div,
+.article-columns-three-css ol.footnotes-list li div {
+    display: inline !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: inherit;
+}
+
+.article-columns-three-css p:first-child {
+    text-indent: 0;
+}
+
+.article-columns-three-css ul,
+.article-columns-three-css ol {
+    margin: 12px 0;
+    padding-left: 1.5em;
+    padding-right: 0;
+    text-align: justify;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.article-columns-three-css li {
+    margin-bottom: 6px;
+    text-align: justify;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* Override for footnote list items - ensure inline flow */
+.article-columns-three-css [class*="footnote"] li,
+.article-columns-three-css [class*="footnotes"] li,
+.article-columns-three-css [id*="footnote"] li,
+.article-columns-three-css [id*="footnotes"] li {
+    margin-bottom: 0.125in;
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+    list-style: none !important;
+    display: list-item !important;
+}
+
+.article-columns-three-css img {
+    max-width: 100%;
+    width: 100%;
+    height: auto;
+    max-height: 2.5in;
+    object-fit: contain;
+    margin: 10px 0;
+    display: block;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+/* Universal rule: ALL headings in article columns get top spacing */
+/* Use padding-top instead of margin-top to avoid margin collapse issues in CSS columns */
+.article-columns-three-css h1,
+.article-columns-three-css h2,
+.article-columns-three-css h3,
+.article-columns-three-css h4,
+.article-columns-three-css h5,
+.article-columns-three-css h6,
+.article-columns-three-css .article-title {
+    margin-top: 0 !important; /* Reset margin */
+    padding-top: 0.25in !important; /* Doubled spacing */
+    display: block;
+    clear: both;
+    box-sizing: border-box;
+    /* Prevent headings from being orphaned - ensure at least one horizontal line of text follows */
+    break-after: avoid !important; /* Prevent break immediately after heading */
+    page-break-after: avoid !important;
+    -webkit-column-break-after: avoid !important;
+    -moz-column-break-after: avoid !important;
+    column-break-after: avoid !important;
+    /* Prevent heading text itself from breaking across columns */
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    -webkit-column-break-inside: avoid !important;
+    -moz-column-break-inside: avoid !important;
+    column-break-inside: avoid !important;
+    /* Use orphans to ensure heading doesn't appear alone at bottom */
+    orphans: 2 !important; /* Require at least 2 lines (heading + content) before column break */
+    widows: 2 !important;
+}
+
+/* Force column break for headings and images that would be orphaned */
+.article-columns-three-css .force-column-break,
+.article-columns-three-css img.force-column-break,
+.article-columns-three-css .featured-image.force-column-break {
+    break-before: column !important;
+    -webkit-column-break-before: always !important;
+    -moz-column-break-before: always !important;
+    column-break-before: always !important;
+    page-break-before: always !important;
+}
+
+/* Ensure headings with force-column-break actually break before them */
+.article-columns-three-css h1.force-column-break,
+.article-columns-three-css h2.force-column-break,
+.article-columns-three-css h3.force-column-break,
+.article-columns-three-css h4.force-column-break,
+.article-columns-three-css h5.force-column-break,
+.article-columns-three-css h6.force-column-break,
+.article-columns-three-css .article-title.force-column-break {
+    break-before: column !important;
+    -webkit-column-break-before: always !important;
+    -moz-column-break-before: always !important;
+    column-break-before: always !important;
+    page-break-before: always !important;
+    margin-top: 0 !important; /* Reset margin when forcing break */
+}
+
+/* Force column break for headings at end of third column (will push to next page) */
+.article-columns-three-css h1.force-page-break,
+.article-columns-three-css h2.force-page-break,
+.article-columns-three-css h3.force-page-break,
+.article-columns-three-css h4.force-page-break,
+.article-columns-three-css h5.force-page-break,
+.article-columns-three-css h6.force-page-break,
+.article-columns-three-css .article-title.force-page-break {
+    break-before: column !important;
+    -webkit-column-break-before: always !important;
+    -moz-column-break-before: always !important;
+    column-break-before: always !important;
+    page-break-before: auto !important; /* Let column break handle page break */
+    margin-top: 0 !important; /* Reset margin when forcing break */
+}
+
+/* Specific styling for h2 and article-title (padding-top handled by universal rule above) */
+.article-columns-three-css h2,
+.article-columns-three-css .article-title {
+    margin: 0 0 8px 0;
+    margin-top: 0 !important;
+    font-weight: bold;
+    page-break-after: avoid !important;
+    break-after: avoid !important; /* Prevent break immediately after heading */
+    break-inside: avoid !important; /* Prevent heading from breaking */
+    /* Use column-break properties for CSS columns */
+    -webkit-column-break-before: auto;
+    -moz-column-break-before: auto;
+    column-break-before: auto;
+    -webkit-column-break-after: avoid !important;
+    -moz-column-break-after: avoid !important;
+    column-break-after: avoid !important;
+    -webkit-column-break-inside: avoid !important;
+    -moz-column-break-inside: avoid !important;
+    column-break-inside: avoid !important;
+    text-align: center;
+    box-sizing: border-box;
+    position: relative;
+    orphans: 2; /* Require at least 2 lines (heading + 1 line) before column break */
+}
+
+/* Horizontal bar after each article title - half width, centered, with space above and below */
+.article-columns-three-css .article-title-bar {
+    display: block;
+    width: 50%;
+    height: 1px;
+    background: #000;
+    margin: 0.125in auto 0.125in auto; /* Space above and below */
+    position: relative;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+}
+
+/* Horizontal bar for front page article titles */
+.article-title-bar-front {
+    display: block;
+    width: 50%;
+    height: 1px;
+    background: #000;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 1.5px !important; /* Reduced from 3px by 50% */
+    margin-bottom: 12px;
+    position: relative;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+}
+
+/* Ensure no extra spacing from title to bar on front page */
+.article-col-right .article-title + .article-title-bar-front {
+    margin-top: 1.5px !important;
+}
+
+/* Ensure horizontal bars print correctly */
+@media print {
+    .article-columns-three-css .article-title-bar {
+        display: block !important;
+        visibility: visible !important;
+        height: 1px;
+        min-height: 1px;
+        background: none !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+        border-top: 1px solid #000 !important;
+        box-sizing: border-box;
+
+        /* Force printing */
+        content: "\00a0";  /* non-breaking space */
+    }
+    
+    .article-title-bar-front {
+        display: block !important;
+        visibility: visible !important;
+        height: 1px;
+        min-height: 1px;
+        background: none !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+        border-top: 1px solid #000 !important;
+        box-sizing: border-box;
+    }
+}
+
+/* Ensure all subtitles (h3, h4, h5, h6) also prevent orphaned headings */
+/* Note: Universal rule above already covers these, but keeping for specificity */
+.article-columns-three-css h3,
+.article-columns-three-css h4,
+.article-columns-three-css h5,
+.article-columns-three-css h6 {
+    break-after: avoid !important; /* Prevent break immediately after heading */
+    page-break-after: avoid !important;
+    -webkit-column-break-after: avoid !important;
+    -moz-column-break-after: avoid !important;
+    column-break-after: avoid !important;
+    break-inside: avoid !important; /* Prevent heading text itself from breaking */
+    page-break-inside: avoid !important;
+    -webkit-column-break-inside: avoid !important;
+    -moz-column-break-inside: avoid !important;
+    column-break-inside: avoid !important;
+}
+
+/* Add horizontal line above article titles when they appear between articles */
+/* Target headings that follow any other content (not first in their container) */
+.article-columns-three-css p + h2.article-title,
+.article-columns-three-css p + .article-title,
+.article-columns-three-css ul + h2.article-title,
+.article-columns-three-css ul + .article-title,
+.article-columns-three-css ol + h2.article-title,
+.article-columns-three-css ol + .article-title,
+.article-columns-three-css img + h2.article-title,
+.article-columns-three-css img + .article-title,
+.article-columns-three-css h1 + h2.article-title,
+.article-columns-three-css h1 + .article-title,
+.article-columns-three-css h2 + h2.article-title,
+.article-columns-three-css h2 + .article-title,
+.article-columns-three-css h3 + h2.article-title,
+.article-columns-three-css h3 + .article-title,
+.article-columns-three-css h4 + h2.article-title,
+.article-columns-three-css h4 + .article-title,
+.article-columns-three-css h5 + h2.article-title,
+.article-columns-three-css h5 + .article-title,
+.article-columns-three-css h6 + h2.article-title,
+.article-columns-three-css h6 + .article-title,
+.article-columns-three-css div + h2.article-title,
+.article-columns-three-css div + .article-title {
+    border-top: 1px solid #000;
+    margin-top: 0.25in !important; /* Space above the line */
+    padding-top: 0.25in !important; /* Space between line and title text */
+}
+
+/* Extra space above horizontal lines on pages 2+ */
+.newsletter-page:not(:first-child) .article-columns-three-css p + h2.article-title,
+.newsletter-page:not(:first-child) .article-columns-three-css p + .article-title,
+.newsletter-page:not(:first-child) .article-columns-three-css ul + h2.article-title,
+.newsletter-page:not(:first-child) .article-columns-three-css ul + .article-title,
+.newsletter-page:not(:first-child) .article-columns-three-css ol + h2.article-title,
+.newsletter-page:not(:first-child) .article-columns-three-css ol + .article-title,
+.newsletter-page:not(:first-child) .article-columns-three-css img + h2.article-title,
+.newsletter-page:not(:first-child) .article-columns-three-css img + .article-title,
+.newsletter-page:not(:first-child) .article-columns-three-css h1 + h2.article-title,
+.newsletter-page:not(:first-child) .article-columns-three-css h1 + .article-title,
+.newsletter-page:not(:first-child) .article-columns-three-css h2 + h2.article-title,
+.newsletter-page:not(:first-child) .article-columns-three-css h2 + .article-title,
+.newsletter-page:not(:first-child) .article-columns-three-css h3 + h2.article-title,
+.newsletter-page:not(:first-child) .article-columns-three-css h3 + .article-title,
+.newsletter-page:not(:first-child) .article-columns-three-css h4 + h2.article-title,
+.newsletter-page:not(:first-child) .article-columns-three-css h4 + .article-title,
+.newsletter-page:not(:first-child) .article-columns-three-css h5 + h2.article-title,
+.newsletter-page:not(:first-child) .article-columns-three-css h5 + .article-title,
+.newsletter-page:not(:first-child) .article-columns-three-css h6 + h2.article-title,
+.newsletter-page:not(:first-child) .article-columns-three-css h6 + .article-title,
+.newsletter-page:not(:first-child) .article-columns-three-css div + h2.article-title,
+.newsletter-page:not(:first-child) .article-columns-three-css div + .article-title {
+    margin-top: 0.5in !important;
+}
+
+/* Specific styling for h3 (padding-top handled by universal rule above) */
+.article-columns-three-css h3 {
+    margin: 0 0 6px 0;
+    margin-top: 0 !important;
+    text-align: center;
+    font-weight: bold;
+    box-sizing: border-box;
+    break-after: avoid !important;
+    break-inside: avoid !important;
+    -webkit-column-break-after: avoid !important;
+    -moz-column-break-after: avoid !important;
+    column-break-after: avoid !important;
+    -webkit-column-break-inside: avoid !important;
+    -moz-column-break-inside: avoid !important;
+    column-break-inside: avoid !important;
+}
+
+/* Specific styling for h4, h5, h6 (padding-top handled by universal rule above) */
+.article-columns-three-css h4,
+.article-columns-three-css h5,
+.article-columns-three-css h6 {
+    margin: 0 0 6px 0;
+    margin-top: 0 !important;
+    font-weight: bold;
+    text-align: center;
+    box-sizing: border-box;
+    break-after: avoid !important;
+    break-inside: avoid !important;
+    -webkit-column-break-after: avoid !important;
+    -moz-column-break-after: avoid !important;
+    column-break-after: avoid !important;
+    -webkit-column-break-inside: avoid !important;
+    -moz-column-break-inside: avoid !important;
+    column-break-inside: avoid !important;
+}
+
+
+.article-columns-three .article-col {
+    display: flex;
+    flex-direction: column;
+    padding-left: 0.125in;
+    padding-right: 0.125in;
+    border-right: 1px solid #000;
+    overflow: hidden;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+}
+
+.article-columns-three .article-col:last-child {
+    border-right: none;
+    padding-right: 0;
+}
+
+.article-columns-three .article-col:first-child {
+    padding-left: 0;
+}
+
+.article-columns-three .article-title {
+    margin-bottom: 12px;
+}
+
+.article-columns-three .article-content,
+.article-columns-three .article-col {
+    font-size: 0.85em;
+    line-height: 1.5;
+    text-align: justify;
+}
+
+.article-columns-three p {
+    margin-bottom: 0;
+    text-align: justify;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: normal; /* Allow normal word breaking, sentences can split */
+    max-width: 100%;
+    width: 100%;
+    orphans: 0; /* Allow paragraphs to split freely - no minimum lines required */
+    widows: 0; /* Allow paragraphs to split freely - no minimum lines required */
+    box-sizing: border-box;
+    page-break-inside: auto !important; /* Allow page breaks within paragraphs */
+    break-inside: auto !important; /* Allow column breaks within paragraphs */
+    -webkit-column-break-inside: auto !important;
+    -moz-column-break-inside: auto !important;
+    column-break-inside: auto !important;
+    text-indent: 0.25in;
+}
+
+.article-columns-three p:first-child {
+    text-indent: 0;
+}
+
+.article-columns-three img {
+    max-width: 100%;
+    width: 100%;
+    height: auto;
+    max-height: 2.5in;
+    object-fit: contain;
+    margin: 10px 0;
+    display: block;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.article-columns-three h2,
+.article-columns-three h3 {
+    margin: 0.25in 0 8px 0;
+    font-weight: bold;
+    text-align: center;
+}
+
+/* Print Styles */
+@media print {
+    body {
+        background: white;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .container {
+        max-width: 100%;
+        padding: 0;
+        margin: 0;
+    }
+    
+    header,
+    .input-section,
+    .newsletter-controls,
+    #loading,
+    .error {
+        display: none !important;
+    }
+    
+    #newsletter-container {
+        margin: 0;
+        padding: 0;
+    }
+    
+    #newsletter {
+        padding: 0;
+        margin: 0;
+        min-height: 0;
+    }
+    
+    .newsletter {
+        padding: 0;
+        margin: 0;
+        box-shadow: none;
+        border-radius: 0;
+        gap: 0;
+    }
+    
+    .newsletter-page {
+        width: 8.5in;
+        height: 11in;
+        padding: 0.25in;
+        page-break-after: always;
+        page-break-before: always;
+        overflow: hidden;
+        margin: 0;
+        box-shadow: none;
+        box-sizing: border-box;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        color-adjust: exact;
+    }
+    
+    .newsletter-page.mode-evil {
+        background-image: url('backgrounds/test-background.jpg');
+    }
+    
+    .newsletter-page.mode-chris-best {
+        background-image: url('backgrounds/chris-best.jpg');
+    }
+    
+    .newsletter-page.mode-chris-worst {
+        background-image: url('backgrounds/chris-worst.jpg');
+    }
+    
+    .newsletter-content {
+        overflow: hidden;
+        max-height: calc(11in - 0.5in);
+        box-sizing: border-box;
+    }
+    
+    .article-columns-three {
+        height: 100%;
+        max-height: 100%;
+        overflow: hidden;
+    }
+    
+    .article-columns-three .article-col {
+        overflow: hidden;
+        height: 100%;
+        max-height: 100%;
+    }
+    
+    .newsletter-masthead {
+        flex-shrink: 0;
+    }
+    
+    .article-columns-three {
+        height: auto;
+        min-height: 0;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .article-columns-three .article-col {
+        overflow: hidden;
+        height: auto;
+        min-height: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .article-columns-three p {
+        max-width: 100%;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .article-columns-three p {
+        orphans: 2;
+        widows: 2;
+        page-break-after: auto;
+    }
+    
+    .article-columns-three img {
+        page-break-inside: avoid;
+        break-inside: avoid;
+        page-break-after: auto;
+        max-width: 100% !important;
+        max-height: 2in !important;
+        width: auto !important;
+        height: auto !important;
+        object-fit: contain !important;
+    }
+    
+    img {
+        max-width: 100% !important;
+        max-height: 3in !important;
+        width: auto !important;
+        height: auto !important;
+        object-fit: contain !important;
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+    }
+    
+    .article-featured .featured-image img,
+    .article-col-right .featured-image img {
+        max-height: 4in !important;
+    }
+    
+    .article-image img,
+    .article-content img,
+    .article-content-right img,
+    .article-columns-three-css img {
+        max-height: 2in !important;
+    }
+    
+    .article-columns-three-css img {
+        display: block !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+    
+    .article-columns-three img {
+        display: block !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+    
+    .article-columns-three .article-col > *:last-child {
+        margin-bottom: 0;
+    }
+    
+    /* Ensure ALL headings have space above them in print mode */
+    .article-columns-three-css h1,
+    .article-columns-three-css h2,
+    .article-columns-three-css h3,
+    .article-columns-three-css h4,
+    .article-columns-three-css h5,
+    .article-columns-three-css h6,
+    .article-columns-three-css .article-title {
+        margin-top: 0 !important;
+        padding-top: 0.25in !important; /* Doubled spacing */
+    }
+    
+    /* Ensure headings have space when preceded by any element in print */
+    .article-columns-three-css * + h1,
+    .article-columns-three-css * + h2,
+    .article-columns-three-css * + h3,
+    .article-columns-three-css * + h4,
+    .article-columns-three-css * + h5,
+    .article-columns-three-css * + h6,
+    .article-columns-three-css * + .article-title {
+        margin-top: 0 !important;
+        padding-top: 0.25in !important; /* Doubled spacing */
+    }
+    
+    /* Horizontal lines above article titles in print */
+    .article-columns-three-css p + h2.article-title,
+    .article-columns-three-css p + .article-title,
+    .article-columns-three-css ul + h2.article-title,
+    .article-columns-three-css ul + .article-title,
+    .article-columns-three-css ol + h2.article-title,
+    .article-columns-three-css ol + .article-title,
+    .article-columns-three-css img + h2.article-title,
+    .article-columns-three-css img + .article-title,
+    .article-columns-three-css h1 + h2.article-title,
+    .article-columns-three-css h1 + .article-title,
+    .article-columns-three-css h2 + h2.article-title,
+    .article-columns-three-css h2 + .article-title,
+    .article-columns-three-css h3 + h2.article-title,
+    .article-columns-three-css h3 + .article-title,
+    .article-columns-three-css h4 + h2.article-title,
+    .article-columns-three-css h4 + .article-title,
+    .article-columns-three-css h5 + h2.article-title,
+    .article-columns-three-css h5 + .article-title,
+    .article-columns-three-css h6 + h2.article-title,
+    .article-columns-three-css h6 + .article-title,
+    .article-columns-three-css div + h2.article-title,
+    .article-columns-three-css div + .article-title {
+        border-top: 1px solid #000;
+        margin-top: 0.25in !important;
+        padding-top: 0.25in !important;
+    }
+    
+    /* Extra space above horizontal lines on pages 2+ */
+    .newsletter-page:not(:first-child) .article-columns-three-css p + h2.article-title,
+    .newsletter-page:not(:first-child) .article-columns-three-css p + .article-title,
+    .newsletter-page:not(:first-child) .article-columns-three-css ul + h2.article-title,
+    .newsletter-page:not(:first-child) .article-columns-three-css ul + .article-title,
+    .newsletter-page:not(:first-child) .article-columns-three-css ol + h2.article-title,
+    .newsletter-page:not(:first-child) .article-columns-three-css ol + .article-title,
+    .newsletter-page:not(:first-child) .article-columns-three-css img + h2.article-title,
+    .newsletter-page:not(:first-child) .article-columns-three-css img + .article-title,
+    .newsletter-page:not(:first-child) .article-columns-three-css h1 + h2.article-title,
+    .newsletter-page:not(:first-child) .article-columns-three-css h1 + .article-title,
+    .newsletter-page:not(:first-child) .article-columns-three-css h2 + h2.article-title,
+    .newsletter-page:not(:first-child) .article-columns-three-css h2 + .article-title,
+    .newsletter-page:not(:first-child) .article-columns-three-css h3 + h2.article-title,
+    .newsletter-page:not(:first-child) .article-columns-three-css h3 + .article-title,
+    .newsletter-page:not(:first-child) .article-columns-three-css h4 + h2.article-title,
+    .newsletter-page:not(:first-child) .article-columns-three-css h4 + .article-title,
+    .newsletter-page:not(:first-child) .article-columns-three-css h5 + h2.article-title,
+    .newsletter-page:not(:first-child) .article-columns-three-css h5 + .article-title,
+    .newsletter-page:not(:first-child) .article-columns-three-css h6 + h2.article-title,
+    .newsletter-page:not(:first-child) .article-columns-three-css h6 + .article-title,
+    .newsletter-page:not(:first-child) .article-columns-three-css div + h2.article-title,
+    .newsletter-page:not(:first-child) .article-columns-three-css div + .article-title {
+        margin-top: 0.5in !important;
+    }
+    
+    .newsletter-page:first-child {
+        page-break-before: auto;
+    }
+    
+    .newsletter-page:last-child {
+        page-break-after: auto;
+    }
+    
+    .article-featured,
+    .articles-columns {
+        page-break-inside: avoid;
+    }
+    
+    @page {
+        size: letter;
+        margin: 0;
+    }
+    
+    @page {
+        size: letter;
+        margin: 0;
+    }
+    
+    .article-columns,
+    .articles-columns {
+        page-break-inside: avoid;
+    }
+    
+    .article-column {
+        page-break-inside: avoid;
+    }
+    
+    a {
+        color: #000 !important;
+        text-decoration: none !important;
+    }
+    
+    /* Links are already removed in cleanHTMLContent, but just in case */
+    a[href]:after {
+        content: "";
+    }
+}
+
+/* Mobile Responsive Styles */
+@media screen and (max-width: 768px) {
+    .container {
+        max-width: 100%;
+        width: 100%;
+        padding: 10px;
+        margin-top: 10px;
+    }
+    
+    header {
+        padding: 0 10px;
+    }
+    
+    header h1 {
+        font-size: 2.5em;
+    }
+    
+    header p {
+        font-size: 1em;
+        padding: 0 10px;
+    }
+    
+    header .disclaimer {
+        font-size: 0.85em;
+        padding: 0 15px;
+    }
+    
+    .input-section {
+        padding: 20px 15px 0 15px;
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 0;
+    }
+    
+    form {
+        width: 100%;
+    }
+    
+    input[type="text"],
+    input[type="url"] {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    button {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    form button[type="submit"] {
+        width: 100%;
+    }
+    
+    .newsletter-controls {
+        padding: 10px;
+    }
+    
+    .newsletter-controls {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .newsletter-controls button {
+        width: 100%;
+        margin: 0;
+        box-sizing: border-box;
+    }
+    
+    #newsletter-container {
+        width: 100%;
+        margin-top: 20px;
+        padding: 0;
+        box-sizing: border-box;
+        overflow-x: hidden;
+        overflow-y: auto;
+        text-align: left;
+        background: transparent;
+    }
+    
+    #newsletter {
+        width: 8.5in;
+        padding: 0;
+        box-sizing: border-box;
+        margin: 0;
+        transform: scale(0.4);
+        transform-origin: top left;
+    }
+    
+    #newsletter .newsletter {
+        gap: 20px !important;
+        align-items: flex-start;
+        width: 8.5in;
+    }
+    
+    #newsletter-container .newsletter-page {
+        width: 8.5in;
+        height: 11in;
+        margin-left: 0;
+        margin-right: auto;
+        margin-bottom: calc(-11in * (1 - 0.4) + 8px);
+    }
+    
+    #newsletter-container .newsletter-page:last-child {
+        margin-bottom: 0;
+    }
+    
+    .newsletter-content {
+        width: 8in;
+        max-width: 8in;
+    }
+}
+
+/* Ensure desktop is not affected by mobile styles */
+@media screen and (min-width: 769px) {
+    #newsletter-container {
+        width: 100% !important;
+        margin-top: 0 !important;
+        padding: 0 !important;
+        position: static !important;
+        left: auto !important;
+        top: auto !important;
+        height: auto !important;
+        padding-top: 0 !important;
+        text-align: left !important;
+        background: transparent !important;
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+    }
+    
+    #newsletter {
+        width: auto !important;
+        padding: 20px !important;
+        min-height: 400px !important;
+        transform: none !important;
+        box-sizing: border-box;
+        margin: 0 auto !important;
+        display: block !important;
+    }
+    
+    #newsletter .newsletter {
+        gap: 20px !important;
+        width: auto !important;
+        align-items: center !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    
+    #newsletter-container .newsletter-page {
+        transform: none !important;
+        margin-bottom: 20px !important;
+        width: 8.5in !important;
+        height: 11in !important;
+        min-height: 11in !important;
+        max-height: none !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        overflow: hidden !important;
+    }
+    
+    #newsletter-container .newsletter-page:last-child {
+        margin-bottom: 0 !important;
+    }
+    
+    .newsletter-content {
+        max-height: calc(11in - 0.5in) !important;
+        height: auto !important;
+        overflow: hidden !important;
+        min-height: 0 !important;
+    }
+}
+
