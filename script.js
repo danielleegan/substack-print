@@ -1029,19 +1029,7 @@ function generateNewsletter(publication, articles) {
 
 // Fetch RSS feed with multiple fallback methods
 async function fetchRSSFeed(rssURL) {
-    // Method 1: Try local proxy server first (most reliable)
-    try {
-        const proxyURL = `http://localhost:8001/proxy?url=${encodeURIComponent(rssURL)}`;
-        const response = await fetch(proxyURL);
-        if (response.ok) {
-            const text = await response.text();
-            return text;
-        }
-    } catch (e) {
-        console.log('Local proxy failed, trying direct fetch...');
-    }
-    
-    // Method 2: Try direct fetch (RSS feeds often allow CORS)
+    // Method 1: Try direct fetch first (RSS feeds often allow CORS, fastest)
     try {
         const response = await fetch(rssURL, {
             mode: 'cors',
@@ -1054,7 +1042,19 @@ async function fetchRSSFeed(rssURL) {
             return text;
         }
     } catch (e) {
-        console.log('Direct fetch failed, trying external proxies...');
+        console.log('Direct fetch failed, trying proxies...');
+    }
+    
+    // Method 2: Try allorigins.win (reliable public proxy)
+    try {
+        const proxyURL = `https://api.allorigins.win/get?url=${encodeURIComponent(rssURL)}`;
+        const response = await fetch(proxyURL);
+        if (response.ok) {
+            const data = await response.json();
+            return data.contents || data.content || '';
+        }
+    } catch (e) {
+        console.log('allorigins.win failed, trying next proxy...');
     }
     
     // Method 3: Try corsproxy.io
@@ -1078,10 +1078,22 @@ async function fetchRSSFeed(rssURL) {
             return text;
         }
     } catch (e) {
-        console.log('codetabs proxy failed');
+        console.log('codetabs proxy failed, trying next proxy...');
     }
     
-    throw new Error('All fetch methods failed. Please make sure the proxy server is running (see README).');
+    // Method 5: Try local proxy server (for local development)
+    try {
+        const proxyURL = `http://localhost:8001/proxy?url=${encodeURIComponent(rssURL)}`;
+        const response = await fetch(proxyURL);
+        if (response.ok) {
+            const text = await response.text();
+            return text;
+        }
+    } catch (e) {
+        console.log('Local proxy failed (expected if not running locally)');
+    }
+    
+    throw new Error('Unable to fetch RSS feed. The feed may be blocked by CORS or the proxies are unavailable. Please try again later.');
 }
 
 // Main function to process Substack URL
