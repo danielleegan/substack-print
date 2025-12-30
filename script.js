@@ -1311,7 +1311,7 @@ async function processSubstackURL(url) {
     } catch (error) {
         console.error('Error processing Substack URL:', error);
         loadingEl.classList.add('hidden');
-        errorEl.textContent = `Error: ${error.message}. Please make sure the URL is a valid Substack publication URL. If the issue persists, the RSS feed may be blocked by CORS.`;
+        errorEl.textContent = 'Problem loading, make sure your URL is formatted like publicationname.substack.com, if that doesn\'t work email me at bugs@substackprint.com';
         errorEl.classList.remove('hidden');
     }
 }
