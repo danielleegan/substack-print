@@ -1199,7 +1199,7 @@ async function processSubstackURL(url) {
             }
             
             // Fetch RSS feed with fallback methods (this may take time)
-            loadingEl.textContent = 'Fetching articles...';
+            loadingEl.textContent = 'Getting your articles for ya, this may take a couple minutes!';
             const rssText = await fetchRSSFeed(rssURL);
             
             // Parse RSS feed
