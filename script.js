@@ -1194,10 +1194,17 @@ async function processSubstackURL(url) {
         
         // Use publication title from feed, fallback to extracted name
         const pubTitle = feedData.publication.title || publicationName;
+        
+        // Convert establishedDate to Date object if it's a string (from cache)
+        let establishedDate = feedData.publication.establishedDate;
+        if (establishedDate && typeof establishedDate === 'string') {
+            establishedDate = new Date(establishedDate);
+        }
+        
         const publication = {
             title: pubTitle,
             description: feedData.publication.description || '',
-            establishedDate: feedData.publication.establishedDate
+            establishedDate: establishedDate
         };
         
         // Limit to first 3 articles for front page
