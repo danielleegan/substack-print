@@ -1177,10 +1177,12 @@ async function processSubstackURL(url) {
         
         // Try cached data first (for faster loading of default publication)
         let feedData = null;
+        let usedCache = false;
         try {
             const cachedData = await fetchCachedPublication(url);
             if (cachedData && cachedData.articles && cachedData.articles.length > 0) {
                 feedData = cachedData;
+                usedCache = true;
                 console.log('Using cached publication data');
             }
         } catch (e) {
@@ -1308,11 +1310,29 @@ async function processSubstackURL(url) {
         // Scroll to newsletter
         newsletterContainer.scrollIntoView({ behavior: 'smooth' });
         
+        // Track successful newsletter generation
+        if (typeof posthog !== 'undefined') {
+            posthog.capture('newsletter_generated', {
+                publication: pubTitle,
+                article_count: limitedArticles.length,
+                mode: getCurrentMode(),
+                used_cache: usedCache
+            });
+        }
+        
     } catch (error) {
         console.error('Error processing Substack URL:', error);
         loadingEl.classList.add('hidden');
         errorEl.textContent = 'Problem loading :( make sure your URL is formatted like "publicationname.substack.com" and if that doesn\'t work email me at bugs@substackprint.com';
         errorEl.classList.remove('hidden');
+        
+        // Track errors
+        if (typeof posthog !== 'undefined') {
+            posthog.capture('newsletter_error', {
+                error_message: error.message,
+                url: url
+            });
+        }
     }
 }
 
@@ -1374,6 +1394,13 @@ document.getElementById('substack-form').addEventListener('submit', (e) => {
     url = normalizeURL(url);
     
     if (url) {
+        // Track form submission
+        if (typeof posthog !== 'undefined') {
+            posthog.capture('newsletter_requested', {
+                url: url
+            });
+        }
+        
         processSubstackURL(url);
     }
 });
@@ -3827,9 +3854,21 @@ function applyModeToPages() {
             console.log('Mode is normal, no class added');
         }
     });
+    
+    // Track mode change
+    if (typeof posthog !== 'undefined' && pages.length > 0) {
+        posthog.capture('mode_changed', {
+            mode: mode
+        });
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Track page load
+    if (typeof posthog !== 'undefined') {
+        posthog.capture('page_loaded');
+    }
+    
     let defaultURL = document.getElementById('substack-url').value.trim();
     
     defaultURL = normalizeURL(defaultURL);
