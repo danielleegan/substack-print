@@ -1028,8 +1028,26 @@ function generateNewsletter(publication, articles) {
 }
 
 // Fetch RSS feed with multiple fallback methods
+// Cloudflare Worker proxy URL - update this after deploying your worker
+// You'll get a URL like: https://substack-rss-proxy.your-subdomain.workers.dev
+const CLOUDFLARE_PROXY_URL = 'https://substack-rss-proxy.daniellescoolemail.workers.dev'; // e.g., 'https://substack-rss-proxy.your-subdomain.workers.dev'
+
 async function fetchRSSFeed(rssURL) {
-    // Method 1: Try direct fetch first (RSS feeds often allow CORS, fastest)
+    // Method 1: Try Cloudflare Worker proxy (if configured)
+    if (CLOUDFLARE_PROXY_URL && CLOUDFLARE_PROXY_URL !== 'https://substack-rss-proxy.daniellescoolemail.workers.dev') {
+        try {
+            const proxyURL = `${CLOUDFLARE_PROXY_URL}?url=${encodeURIComponent(rssURL)}`;
+            const response = await fetch(proxyURL);
+            if (response.ok) {
+                const text = await response.text();
+                return text;
+            }
+        } catch (e) {
+            console.log('Cloudflare proxy failed, trying direct fetch...');
+        }
+    }
+    
+    // Method 2: Try direct fetch (RSS feeds often allow CORS, fastest)
     try {
         const response = await fetch(rssURL, {
             mode: 'cors',
@@ -1045,7 +1063,7 @@ async function fetchRSSFeed(rssURL) {
         console.log('Direct fetch failed, trying proxies...');
     }
     
-    // Method 2: Try allorigins.win (reliable public proxy)
+    // Method 3: Try allorigins.win (reliable public proxy)
     try {
         const proxyURL = `https://api.allorigins.win/get?url=${encodeURIComponent(rssURL)}`;
         const response = await fetch(proxyURL);
@@ -1057,7 +1075,7 @@ async function fetchRSSFeed(rssURL) {
         console.log('allorigins.win failed, trying next proxy...');
     }
     
-    // Method 3: Try corsproxy.io
+    // Method 4: Try corsproxy.io
     try {
         const proxyURL = `https://corsproxy.io/?${encodeURIComponent(rssURL)}`;
         const response = await fetch(proxyURL);
@@ -1069,7 +1087,7 @@ async function fetchRSSFeed(rssURL) {
         console.log('corsproxy.io failed, trying next proxy...');
     }
     
-    // Method 4: Try codetabs proxy
+    // Method 5: Try codetabs proxy
     try {
         const proxyURL = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(rssURL)}`;
         const response = await fetch(proxyURL);
@@ -1081,7 +1099,7 @@ async function fetchRSSFeed(rssURL) {
         console.log('codetabs proxy failed, trying next proxy...');
     }
     
-    // Method 5: Try local proxy server (for local development)
+    // Method 6: Try local proxy server (for local development)
     try {
         const proxyURL = `http://localhost:8001/proxy?url=${encodeURIComponent(rssURL)}`;
         const response = await fetch(proxyURL);
