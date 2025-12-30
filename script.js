@@ -199,9 +199,25 @@ function parseRSSFeed(xmlText) {
     const articles = [];
     let earliestDate = null;
     
-    items.forEach((item, index) => {
+    // First pass: quickly scan all items to find earliest date (for EST. year)
+    // Only need pubDate for this, not full processing
+    items.forEach((item) => {
+        const pubDate = item.querySelector('pubDate')?.textContent || '';
+        if (pubDate) {
+            const articleDate = new Date(pubDate);
+            if (articleDate && !isNaN(articleDate.getTime())) {
+                if (!earliestDate || articleDate < earliestDate) {
+                    earliestDate = articleDate;
+                }
+            }
+        }
+    });
+    
+    // Second pass: Only fully process the first 3 articles (we only display 3)
+    const MAX_ARTICLES = 3;
+    for (let index = 0; index < Math.min(items.length, MAX_ARTICLES); index++) {
+        const item = items[index];
         const title = item.querySelector('title')?.textContent || 'Untitled';
-        const link = item.querySelector('link')?.textContent || '';
         const pubDate = item.querySelector('pubDate')?.textContent || '';
         
         // Try to get full content from content:encoded first (full article)
@@ -222,7 +238,7 @@ function parseRSSFeed(xmlText) {
             }
         }
         
-        // Fall back to description if no content:encoded
+        // Fall back to description if no content:encoded (rare, but handle it)
         if (!content) {
             const description = item.querySelector('description')?.textContent || '';
             if (description) {
@@ -238,41 +254,13 @@ function parseRSSFeed(xmlText) {
             content = preprocessRSSContent(content);
         }
         
-        // Try to get author from various possible selectors
-        let author = '';
-        const authorSelectors = [
-            'dc\\:creator',
-            'creator',
-            '[xmlns\\:dc] creator',
-            'author'
-        ];
-        for (const selector of authorSelectors) {
-            const authorEl = item.querySelector(selector);
-            if (authorEl) {
-                author = authorEl.textContent || '';
-                break;
-            }
-        }
-        
-        const description = item.querySelector('description')?.textContent || '';
-        const articleDate = new Date(pubDate);
+        // Only store what we actually use
         articles.push({
             title,
-            link,
-            pubDate: articleDate,
             content,
-            description,
-            author,
             isFeatured: index === 0 // First article is featured
         });
-        
-        // Track earliest date for established date
-        if (articleDate && !isNaN(articleDate.getTime())) {
-            if (!earliestDate || articleDate < earliestDate) {
-                earliestDate = articleDate;
-            }
-        }
-    });
+    }
     
     return {
         articles,
@@ -286,28 +274,46 @@ function parseRSSFeed(xmlText) {
 
 // Fetch full article content (fallback if RSS doesn't have full content)
 async function fetchArticleContent(url) {
+    // Method 1: Try Cloudflare Worker proxy first (fastest)
+    if (CLOUDFLARE_PROXY_URL && CLOUDFLARE_PROXY_URL !== 'YOUR_CLOUDFLARE_WORKER_URL_HERE') {
+        try {
+            const proxyURL = `${CLOUDFLARE_PROXY_URL}?url=${encodeURIComponent(url)}`;
+            const response = await fetchWithTimeout(proxyURL, {}, 3000);
+            if (response.ok) {
+                const text = await response.text();
+                if (text) {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(text, 'text/html');
+                    const articleContent = doc.querySelector('.post-content, .body, article, .entry-content');
+                    if (articleContent) {
+                        return articleContent.innerHTML;
+                    }
+                }
+            }
+        } catch (e) {
+            // Silently fail and try fallback
+        }
+    }
+    
+    // Method 2: Fallback to allorigins.win
     try {
-        // Use CORS proxy for fetching article content
-        // Note: In production, you'd want to use your own proxy server
         const proxyURL = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-        const response = await fetch(proxyURL);
-        const data = await response.json();
-        
-        if (data.contents) {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(data.contents, 'text/html');
-            
-            // Try to find article content in common Substack selectors
-            const articleContent = doc.querySelector('.post-content, .body, article, .entry-content');
-            if (articleContent) {
-                return articleContent.innerHTML;
+        const response = await fetchWithTimeout(proxyURL, {}, 3000);
+        if (response.ok) {
+            const data = await response.json();
+            if (data.contents) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(data.contents, 'text/html');
+                const articleContent = doc.querySelector('.post-content, .body, article, .entry-content');
+                if (articleContent) {
+                    return articleContent.innerHTML;
+                }
             }
         }
-        return null;
     } catch (e) {
-        console.error('Error fetching article content:', e);
-        return null;
+        // Error already logged if needed
     }
+    return null;
 }
 
 // MANDATORY PRE-PASS: Normalize footnotes before any rendering
@@ -810,7 +816,6 @@ function generateNewsletter(publication, articles) {
         const article1 = articles[0]; // Most recent article
         const article2 = articles[1] || null;
         const article3 = articles[2] || null;
-        const article4 = articles[3] || null;
         
         // Process Article 1 (right side)
         const cleanContent1 = cleanHTMLContent(article1.content);
@@ -851,15 +856,6 @@ function generateNewsletter(publication, articles) {
         // Remaining content will be set by trimArticle1ToFit() after it trims
         article1RemainingContent = '';
         
-        const article1Description = article1.description || '';
-        
-        // Clean description HTML
-        let cleanDescription = '';
-        if (article1Description) {
-            const descDoc = parser.parseFromString(article1Description, 'text/html');
-            cleanDescription = descDoc.body.textContent || article1Description;
-        }
-        
         if (mainImage) {
             const imgSrc = mainImage.getAttribute('src') || mainImage.getAttribute('data-src') || '';
             imageHTML = `
@@ -874,10 +870,9 @@ function generateNewsletter(publication, articles) {
         // Article 1 continues on page 2
         // Article 2 starts after article 1 finishes (need to estimate pages)
         // For now, assume article 1 takes 1 page, so article 2 starts on page 2
-        // Article 3 starts after article 2, article 4 after article 3
+        // Article 3 starts after article 2
         let article2Page = 2;
         let article3Page = 3;
-        let article4Page = 4;
         
         html += `
             <div class="article-featured">
@@ -1032,86 +1027,114 @@ function generateNewsletter(publication, articles) {
 // You'll get a URL like: https://substack-rss-proxy.your-subdomain.workers.dev
 const CLOUDFLARE_PROXY_URL = 'https://substack-rss-proxy.daniellescoolemail.workers.dev'; // e.g., 'https://substack-rss-proxy.your-subdomain.workers.dev'
 
+// Helper function to fetch with timeout
+async function fetchWithTimeout(url, options = {}, timeout = 5000) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    try {
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(id);
+        return response;
+    } catch (e) {
+        clearTimeout(id);
+        throw e;
+    }
+}
+
 async function fetchRSSFeed(rssURL) {
-    // Method 1: Try Cloudflare Worker proxy (if configured)
-    if (CLOUDFLARE_PROXY_URL && CLOUDFLARE_PROXY_URL !== 'https://substack-rss-proxy.daniellescoolemail.workers.dev') {
+    // Method 1: Try Cloudflare Worker proxy first (fastest, same network)
+    if (CLOUDFLARE_PROXY_URL && CLOUDFLARE_PROXY_URL !== 'YOUR_CLOUDFLARE_WORKER_URL_HERE') {
         try {
             const proxyURL = `${CLOUDFLARE_PROXY_URL}?url=${encodeURIComponent(rssURL)}`;
-            const response = await fetch(proxyURL);
+            console.log('Trying Cloudflare Worker first:', proxyURL);
+            const response = await fetchWithTimeout(proxyURL, {}, 3000);
             if (response.ok) {
                 const text = await response.text();
-                return text;
+                if (text && text.trim().length > 0) {
+                    console.log('Cloudflare Worker succeeded!');
+                    return text;
+                }
+            } else {
+                console.log('Cloudflare Worker returned non-OK status:', response.status);
             }
         } catch (e) {
-            console.log('Cloudflare proxy failed, trying direct fetch...');
+            console.log('Cloudflare Worker failed, trying fallbacks:', e.message);
         }
+    } else {
+        console.log('Cloudflare Worker not configured, skipping');
     }
     
-    // Method 2: Try direct fetch (RSS feeds often allow CORS, fastest)
-    try {
-        const response = await fetch(rssURL, {
+    // Method 2: Try direct fetch in parallel with allorigins (RSS feeds often allow CORS)
+    // Only start these after Cloudflare Worker has failed
+    console.log('Trying direct fetch and allorigins in parallel...');
+    const [directResult, alloriginsResult] = await Promise.allSettled([
+        fetch(rssURL, {
             mode: 'cors',
-            headers: {
-                'Accept': 'application/rss+xml, application/xml, text/xml'
-            }
-        });
-        if (response.ok) {
-            const text = await response.text();
-            return text;
-        }
-    } catch (e) {
-        console.log('Direct fetch failed, trying proxies...');
+            headers: { 'Accept': 'application/rss+xml, application/xml, text/xml' }
+        }).catch(() => null),
+        fetchWithTimeout(
+            `https://api.allorigins.win/get?url=${encodeURIComponent(rssURL)}`,
+            {},
+            3000
+        ).catch(() => null)
+    ]);
+    
+    // Check direct fetch result
+    if (directResult.status === 'fulfilled' && directResult.value?.ok) {
+        const text = await directResult.value.text();
+        if (text) return text;
     }
     
-    // Method 3: Try allorigins.win (reliable public proxy)
-    try {
-        const proxyURL = `https://api.allorigins.win/get?url=${encodeURIComponent(rssURL)}`;
-        const response = await fetch(proxyURL);
-        if (response.ok) {
-            const data = await response.json();
-            return data.contents || data.content || '';
-        }
-    } catch (e) {
-        console.log('allorigins.win failed, trying next proxy...');
+    // Check allorigins result
+    if (alloriginsResult.status === 'fulfilled' && alloriginsResult.value?.ok) {
+        const data = await alloriginsResult.value.json();
+        const content = data.contents || data.content || '';
+        if (content) return content;
     }
     
-    // Method 4: Try corsproxy.io
-    try {
-        const proxyURL = `https://corsproxy.io/?${encodeURIComponent(rssURL)}`;
-        const response = await fetch(proxyURL);
-        if (response.ok) {
-            const text = await response.text();
-            return text;
-        }
-    } catch (e) {
-        console.log('corsproxy.io failed, trying next proxy...');
-    }
-    
-    // Method 5: Try codetabs proxy
-    try {
-        const proxyURL = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(rssURL)}`;
-        const response = await fetch(proxyURL);
-        if (response.ok) {
-            const text = await response.text();
-            return text;
-        }
-    } catch (e) {
-        console.log('codetabs proxy failed, trying next proxy...');
-    }
-    
-    // Method 6: Try local proxy server (for local development)
+    // Method 3: Try local proxy (for local development only)
     try {
         const proxyURL = `http://localhost:8001/proxy?url=${encodeURIComponent(rssURL)}`;
-        const response = await fetch(proxyURL);
+        const response = await fetchWithTimeout(proxyURL, {}, 1000);
         if (response.ok) {
             const text = await response.text();
             return text;
         }
     } catch (e) {
-        console.log('Local proxy failed (expected if not running locally)');
+        // Expected to fail on deployed sites
     }
     
-    throw new Error('Unable to fetch RSS feed. The feed may be blocked by CORS or the proxies are unavailable. Please try again later.');
+    throw new Error('Unable to fetch RSS feed. The feed may be blocked by CORS or the proxies are unavailable.');
+}
+
+// Check for cached publication data (for default/commonly accessed publications)
+async function fetchCachedPublication(url) {
+    const normalizedURL = url.toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
+    
+    // Check if this is the default publication (rawandferal)
+    if (normalizedURL.includes('rawandferal.substack.com') || normalizedURL === 'rawandferal.substack.com') {
+        try {
+            // Try to fetch cached JSON from GitHub or CDN
+            // Using jsDelivr CDN for GitHub raw files (faster than raw.githubusercontent.com)
+            const cacheURL = 'https://cdn.jsdelivr.net/gh/danielleegan/substack-print@main/cache/rawandferal.json';
+            const response = await fetchWithTimeout(cacheURL, {}, 2000);
+            if (response.ok) {
+                const cachedData = await response.json();
+                // Check if cache is fresh (less than 1 hour old)
+                const cacheAge = Date.now() - (cachedData.timestamp || 0);
+                if (cacheAge < 3600000) { // 1 hour
+                    console.log('Using cached publication data');
+                    return cachedData;
+                } else {
+                    console.log('Cache is stale, fetching fresh RSS');
+                }
+            }
+        } catch (e) {
+            // Cache fetch failed silently, continue to RSS (don't show error)
+            console.log('Cache not available, using RSS feed');
+        }
+    }
+    return null;
 }
 
 // Main function to process Substack URL
@@ -1121,28 +1144,51 @@ async function processSubstackURL(url) {
     const newsletterContainer = document.getElementById('newsletter-container');
     const newsletterEl = document.getElementById('newsletter');
     
-    // Show loading, hide error
+    // Show loading, hide error - keep loading visible while processing
     loadingEl.classList.remove('hidden');
     errorEl.classList.add('hidden');
     newsletterContainer.classList.add('hidden');
+    
+    // Update loading message to show we're working
+    loadingEl.textContent = 'Loading articles...';
     
     try {
         // Extract publication name
         const publicationName = extractPublicationName(url);
         
-        // Get RSS feed URL
-        const rssURL = getRSSFeedURL(url);
-        if (!rssURL) {
-            throw new Error('Invalid Substack URL');
+        // Try cached data first (for faster loading of default publication)
+        let feedData = null;
+        try {
+            const cachedData = await fetchCachedPublication(url);
+            if (cachedData && cachedData.articles && cachedData.articles.length > 0) {
+                feedData = cachedData;
+                console.log('Using cached publication data');
+            }
+        } catch (e) {
+            // Cache fetch failed silently, continue to RSS
+            console.log('Cache not available, fetching RSS');
         }
         
-        // Fetch RSS feed with fallback methods
-        const rssText = await fetchRSSFeed(rssURL);
+        // If cache didn't work, fetch from RSS
+        if (!feedData) {
+            loadingEl.textContent = 'Fetching RSS feed...';
+            
+            // Get RSS feed URL
+            const rssURL = getRSSFeedURL(url);
+            if (!rssURL) {
+                throw new Error('Invalid Substack URL');
+            }
+            
+            // Fetch RSS feed with fallback methods (this may take time)
+            loadingEl.textContent = 'Fetching articles...';
+            const rssText = await fetchRSSFeed(rssURL);
+            
+            // Parse RSS feed
+            loadingEl.textContent = 'Processing articles...';
+            feedData = parseRSSFeed(rssText);
+        }
         
-        // Parse RSS feed
-        const feedData = parseRSSFeed(rssText);
-        
-        if (feedData.articles.length === 0) {
+        if (!feedData || feedData.articles.length === 0) {
             throw new Error('No articles found in RSS feed');
         }
         
@@ -1154,10 +1200,14 @@ async function processSubstackURL(url) {
             establishedDate: feedData.publication.establishedDate
         };
         
-        // Limit to first 4 articles for front page
-        const limitedArticles = feedData.articles.slice(0, 4);
+        // Limit to first 3 articles for front page
+        const limitedArticles = feedData.articles.slice(0, 3);
         
-        // Generate newsletter HTML
+        // Show newsletter container immediately (progressive rendering - show structure first)
+        newsletterContainer.classList.remove('hidden');
+        loadingEl.classList.add('hidden');
+        
+        // Generate newsletter HTML (using existing function)
         const newsletterHTML = generateNewsletter(publication, limitedArticles);
         newsletterEl.innerHTML = newsletterHTML;
         
