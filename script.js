@@ -706,10 +706,29 @@ function formatHeaderDate(date) {
 
 // Format year only (for EST. date)
 function formatYear(date) {
-    if (!date || isNaN(date.getTime())) {
+    if (!date) {
         return new Date().getFullYear();
     }
-    return date.getFullYear();
+    
+    // Handle string dates (from cache)
+    if (typeof date === 'string') {
+        const dateObj = new Date(date);
+        if (!isNaN(dateObj.getTime())) {
+            return dateObj.getFullYear();
+        }
+        return new Date().getFullYear();
+    }
+    
+    // Handle Date objects
+    if (date instanceof Date) {
+        if (!isNaN(date.getTime())) {
+            return date.getFullYear();
+        }
+        return new Date().getFullYear();
+    }
+    
+    // Fallback
+    return new Date().getFullYear();
 }
 
 // Find the main/featured image in an article
