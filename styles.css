@@ -2218,6 +2218,7 @@ header ~ p a {
         margin-left: 0;
         margin-right: auto;
         margin-bottom: calc(-11in * (1 - 0.4) + 8px);
+        overflow: visible !important; /* Allow content to overflow on mobile when scaled */
     }
     
     #newsletter-container .newsletter-page:last-child {
@@ -2238,64 +2239,40 @@ header ~ p a {
         display: flex !important;
     }
     
-    /* Fix content cutoff on mobile - make rules very specific */
+    /* Fix content cutoff on mobile - allow overflow while maintaining page structure */
+    /* Keep max-height to maintain structure, but allow overflow: visible for content that slightly exceeds */
     .newsletter-page .newsletter-content {
         width: 8in;
         max-width: 8in;
         overflow: visible !important;
-        max-height: none !important;
-        height: auto !important;
+        max-height: calc(11in - 0.5in) !important; /* Keep structure */
     }
     
+    /* Allow article containers to overflow if content exceeds */
     .newsletter-page .newsletter-content .article-featured {
         overflow: visible !important;
-        max-height: none !important;
-        height: auto !important;
     }
     
     .newsletter-page .newsletter-content .article-featured .article-col-right {
         overflow: visible !important;
-        max-height: none !important;
-        height: auto !important;
     }
     
     .newsletter-page .newsletter-content .article-featured .article-col-right .article-content-right {
         overflow: visible !important;
-        max-height: none !important;
-        height: auto !important;
     }
     
     /* Also target direct selectors for extra specificity */
     #newsletter-container .newsletter-page .newsletter-content {
         overflow: visible !important;
-        max-height: none !important;
-        height: auto !important;
+        max-height: calc(11in - 0.5in) !important; /* Keep structure */
     }
     
     #newsletter-container .newsletter-page .article-col-right {
         overflow: visible !important;
-        max-height: none !important;
-        height: auto !important;
     }
     
     #newsletter-container .newsletter-page .article-content-right {
         overflow: visible !important;
-        max-height: none !important;
-        height: auto !important;
-    }
-    
-    /* Ensure article-columns container doesn't restrict height on mobile */
-    #newsletter-container .newsletter-page .article-columns {
-        overflow: visible !important;
-        max-height: none !important;
-        height: auto !important;
-    }
-    
-    /* Ensure article-featured container doesn't restrict height on mobile */
-    #newsletter-container .newsletter-page .article-featured {
-        overflow: visible !important;
-        max-height: none !important;
-        height: auto !important;
     }
     
     /* Show mobile-only elements */
