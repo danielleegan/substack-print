@@ -67,15 +67,15 @@ def parse_rss_feed(xml_text):
     articles = []
     earliest_date = None
     
-    # First pass: quickly scan all items to find earliest date
-    for item in items:
-        pub_date_elem = item.find('pubDate')
+    # Get the earliest date from the last item in the RSS feed (earliest published article)
+    # RSS feeds are typically ordered newest first, so the last item is the oldest
+    if items:
+        last_item = items[-1]
+        pub_date_elem = last_item.find('pubDate')
         if pub_date_elem is not None and pub_date_elem.text:
             try:
                 # Parse RFC 822 date format (common in RSS feeds)
-                article_date = parsedate_to_datetime(pub_date_elem.text)
-                if earliest_date is None or article_date < earliest_date:
-                    earliest_date = article_date
+                earliest_date = parsedate_to_datetime(pub_date_elem.text)
             except (ValueError, TypeError, AttributeError):
                 pass
     

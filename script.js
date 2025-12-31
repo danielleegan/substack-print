@@ -247,19 +247,18 @@ function parseRSSFeed(xmlText) {
     const articles = [];
     let earliestDate = null;
     
-    // First pass: quickly scan all items to find earliest date (for EST. year)
-    // Only need pubDate for this, not full processing
-    items.forEach((item) => {
-        const pubDate = item.querySelector('pubDate')?.textContent || '';
+    // Get the earliest date from the last item in the RSS feed (earliest published article)
+    // RSS feeds are typically ordered newest first, so the last item is the oldest
+    if (items.length > 0) {
+        const lastItem = items[items.length - 1];
+        const pubDate = lastItem.querySelector('pubDate')?.textContent || '';
         if (pubDate) {
             const articleDate = new Date(pubDate);
             if (articleDate && !isNaN(articleDate.getTime())) {
-                if (!earliestDate || articleDate < earliestDate) {
-                    earliestDate = articleDate;
-                }
+                earliestDate = articleDate;
             }
         }
-    });
+    }
     
     // Second pass: Only fully process the first 3 articles (we only display 3)
     const MAX_ARTICLES = 3;
@@ -863,7 +862,7 @@ function generateNewsletter(publication, articles) {
     let html = `
         <div class="newsletter-page${modeClass}">
             <div class="newsletter-masthead">
-                <div class="masthead-top-url">go analog at substackprint.com</div>
+                <div class="masthead-top-url"><img src="logo.png" alt="Substack Print Logo"></div>
                 <div class="masthead-title">${publication.title || 'SUBSCRIPTION'}</div>
                 <div class="masthead-tagline">${publication.description || ''}</div>
                 <div class="masthead-divider"></div>
