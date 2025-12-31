@@ -2241,6 +2241,19 @@ header ~ p a {
     .newsletter-content {
         width: 8in;
         max-width: 8in;
+        overflow: visible !important;
+        max-height: none !important;
+    }
+    
+    /* Fix article-col-right content cutoff on mobile */
+    .article-col-right {
+        overflow: visible !important;
+        max-height: none !important;
+    }
+    
+    .article-content-right {
+        overflow: visible !important;
+        max-height: none !important;
     }
     
     /* Show mobile-only elements */
