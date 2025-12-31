@@ -409,9 +409,9 @@ header ~ p a {
 .masthead-title {
     font-size: 3.5em;
     font-weight: bold;
-    text-transform: uppercase;
+    text-transform: capitalize;
     letter-spacing: 3px;
-    font-family: 'Times New Roman', serif;
+    font-family: 'Manufacturing Consent', serif;
     line-height: 1.1;
     margin-bottom: 8px;
     margin-top: 0.25in;
@@ -2075,8 +2075,8 @@ header ~ p a {
     }
     
     header p {
-        font-size: 1em;
-        padding: 0 10px;
+        font-size: 0.85em;
+        padding: 0 0px;
     }
     
     header .disclaimer {
