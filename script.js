@@ -1360,8 +1360,6 @@ async function processSubstackURL(url) {
         newsletterContainer.classList.remove('hidden');
         updateMobileElements(); // Show/hide mobile message and image
         
-        // Scroll to newsletter
-        newsletterContainer.scrollIntoView({ behavior: 'smooth' });
         
         // Track successful newsletter generation
         if (typeof posthog !== 'undefined') {
