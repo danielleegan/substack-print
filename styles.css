@@ -2149,6 +2149,20 @@ header ~ p a {
         margin-bottom: 0;
     }
     
+    /* Hide pages 2+ on mobile, only show front page */
+    #newsletter-container .newsletter-page:not(:first-child),
+    #newsletter .newsletter-page:not(:first-child),
+    .newsletter .newsletter-page:not(:first-child) {
+        display: none !important;
+    }
+    
+    /* Ensure first page is visible */
+    #newsletter-container .newsletter-page:first-child,
+    #newsletter .newsletter-page:first-child,
+    .newsletter .newsletter-page:first-child {
+        display: flex !important;
+    }
+    
     .newsletter-content {
         width: 8in;
         max-width: 8in;
@@ -2200,6 +2214,7 @@ header ~ p a {
         margin-left: auto !important;
         margin-right: auto !important;
         overflow: hidden !important;
+        display: flex !important; /* Ensure all pages are visible on desktop */
     }
     
     #newsletter-container .newsletter-page:last-child {

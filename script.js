@@ -22,6 +22,27 @@ function getRSSFeedURL(url) {
     }
 }
 
+// Helper function to check if we're on mobile
+function isMobile() {
+    return window.matchMedia('(max-width: 768px)').matches;
+}
+
+// Function to update page visibility based on screen size
+function updatePageVisibility() {
+    const pages = document.querySelectorAll('.newsletter-page');
+    const mobile = isMobile();
+    
+    pages.forEach((page, idx) => {
+        if (!mobile || idx === 0) {
+            // Show page on desktop, or if it's the first page on mobile
+            page.style.display = 'flex';
+        } else {
+            // Hide pages 2+ on mobile
+            page.style.display = 'none';
+        }
+    });
+}
+
 // PRE-PROCESSING STEP: Flatten footnotes before any newspaper styling or formatting
 // This function processes raw HTML content from RSS feeds to ensure footnotes are single-line
 function preprocessRSSContent(htmlContent) {
@@ -1241,6 +1262,7 @@ async function processSubstackURL(url) {
         
         // Apply mode immediately after rendering
         applyModeToPages();
+        updatePageVisibility(); // Hide pages 2+ on mobile
         
         // After rendering, trim Article 1 content to fit on page 1, then split pages dynamically
         // Use a longer delay (500ms) to ensure horizontal bars are fully rendered and layout is stable
@@ -1286,6 +1308,7 @@ async function processSubstackURL(url) {
                 try {
                     splitPagesDynamically();
                     applyModeToPages(); // Apply mode after pages are split
+                    updatePageVisibility(); // Hide pages 2+ on mobile
                     updateArticlePageReferences(limitedArticles);
                     adjustAllTitleSizes();
                     preventOrphanedHeadings(); // Prevent headings from being orphaned at bottom of columns
@@ -2033,9 +2056,14 @@ function splitPagesDynamically() {
     const pages = document.querySelectorAll('.newsletter-page');
     console.log('splitPagesDynamically called, found', pages.length, 'pages');
     
-    // Ensure all pages are visible
+    // Ensure all pages are visible (but hide pages 2+ on mobile)
     pages.forEach((p, idx) => {
-        p.style.display = 'flex';
+        // On mobile, only show first page; on desktop, show all pages
+        if (!isMobile() || idx === 0) {
+            p.style.display = 'flex';
+        } else {
+            p.style.display = 'none';
+        }
         const contentDiv = p.querySelector('.article-columns-three-css');
         if (contentDiv) {
             contentDiv.style.display = 'block';
@@ -2234,7 +2262,13 @@ function splitPagesDynamically() {
             }
             
             if (currentPage && currentPage.parentNode) {
-                currentPage.style.display = 'flex';
+                // On mobile, only show first page; on desktop, show all pages
+                const pageIndex = Array.from(document.querySelectorAll('.newsletter-page')).indexOf(currentPage);
+                if (!isMobile() || pageIndex === 0) {
+                    currentPage.style.display = 'flex';
+                } else {
+                    currentPage.style.display = 'none';
+                }
                 currentPage.offsetHeight; // Force reflow
             }
             
@@ -2261,7 +2295,13 @@ function splitPagesDynamically() {
                 // Force a reflow to ensure content displays
                 contentDiv.offsetHeight;
                 if (page) {
-                    page.style.display = 'flex';
+                    // On mobile, only show first page; on desktop, show all pages
+                    const pageIndex = Array.from(document.querySelectorAll('.newsletter-page')).indexOf(page);
+                    if (!isMobile() || pageIndex === 0) {
+                        page.style.display = 'flex';
+                    } else {
+                        page.style.display = 'none';
+                    }
                     page.offsetHeight;
                 }
             } else {
@@ -2283,8 +2323,13 @@ function splitPagesDynamically() {
             const contentHTML = lastContentDiv.innerHTML.trim();
             console.log('Last page has', elementCount, 'elements, content length:', contentHTML.length);
             
-            // Ensure page is visible
-            lastPage.style.display = 'flex';
+            // Ensure page is visible (but hide pages 2+ on mobile)
+            const lastPageIndex = Array.from(document.querySelectorAll('.newsletter-page')).indexOf(lastPage);
+            if (!isMobile() || lastPageIndex === 0) {
+                lastPage.style.display = 'flex';
+            } else {
+                lastPage.style.display = 'none';
+            }
             lastContentDiv.style.display = 'block';
             
             // Force reflow to ensure content renders
@@ -3884,6 +3929,15 @@ document.addEventListener('DOMContentLoaded', () => {
             applyModeToPages();
         });
     }
+    
+    // Add resize listener to update page visibility when window size changes
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            updatePageVisibility();
+        }, 100);
+    });
 });
 
 
