@@ -624,8 +624,17 @@ function cleanHTMLContent(html) {
     });
     
     // Final pass: Ensure footnotes are still single-line (safety check)
-    // Process ALL list items, not just footnotes
+    // ONLY process list items that are in footnote containers
     doc2.querySelectorAll('li').forEach(li => {
+        // Only process if it's in a footnote container or has footnote-related classes/ids
+        const isInFootnoteContainer = li.closest('[class*="footnote"], [id*="footnote"]') !== null;
+        const hasFootnoteClass = li.classList.toString().toLowerCase().includes('footnote') ||
+                               li.id.toLowerCase().includes('footnote');
+        
+        if (!isInFootnoteContainer && !hasFootnoteClass) {
+            return; // Skip list items that aren't in footnote containers
+        }
+        
         // Remove ALL <br> tags
         li.querySelectorAll('br').forEach(br => br.remove());
         

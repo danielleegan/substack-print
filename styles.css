@@ -2284,6 +2284,20 @@ header ~ p a {
         height: auto !important;
     }
     
+    /* Ensure article-columns container doesn't restrict height on mobile */
+    #newsletter-container .newsletter-page .article-columns {
+        overflow: visible !important;
+        max-height: none !important;
+        height: auto !important;
+    }
+    
+    /* Ensure article-featured container doesn't restrict height on mobile */
+    #newsletter-container .newsletter-page .article-featured {
+        overflow: visible !important;
+        max-height: none !important;
+        height: auto !important;
+    }
+    
     /* Show mobile-only elements */
     .mobile-only {
         display: block !important;
