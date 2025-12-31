@@ -2238,22 +2238,50 @@ header ~ p a {
         display: flex !important;
     }
     
-    .newsletter-content {
+    /* Fix content cutoff on mobile - make rules very specific */
+    .newsletter-page .newsletter-content {
         width: 8in;
         max-width: 8in;
         overflow: visible !important;
         max-height: none !important;
+        height: auto !important;
     }
     
-    /* Fix article-col-right content cutoff on mobile */
-    .article-col-right {
+    .newsletter-page .newsletter-content .article-featured {
         overflow: visible !important;
         max-height: none !important;
+        height: auto !important;
     }
     
-    .article-content-right {
+    .newsletter-page .newsletter-content .article-featured .article-col-right {
         overflow: visible !important;
         max-height: none !important;
+        height: auto !important;
+    }
+    
+    .newsletter-page .newsletter-content .article-featured .article-col-right .article-content-right {
+        overflow: visible !important;
+        max-height: none !important;
+        height: auto !important;
+    }
+    
+    /* Also target direct selectors for extra specificity */
+    #newsletter-container .newsletter-page .newsletter-content {
+        overflow: visible !important;
+        max-height: none !important;
+        height: auto !important;
+    }
+    
+    #newsletter-container .newsletter-page .article-col-right {
+        overflow: visible !important;
+        max-height: none !important;
+        height: auto !important;
+    }
+    
+    #newsletter-container .newsletter-page .article-content-right {
+        overflow: visible !important;
+        max-height: none !important;
+        height: auto !important;
     }
     
     /* Show mobile-only elements */
