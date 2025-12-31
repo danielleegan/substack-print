@@ -2247,21 +2247,30 @@ header ~ p a {
         max-height: calc(11in - 0.5in) !important; /* Keep structure */
     }
     
-    /* Ensure article-content-right has same constraints as article-content (articles 2 & 3) */
-    .newsletter-page .newsletter-content .article-featured .article-col-right .article-content-right {
+    /* Ensure article-content-right matches article-snippet exactly on mobile */
+    .newsletter-page .newsletter-content .article-featured .article-col-right .article-content-right,
+    #newsletter-container .newsletter-page .article-content-right,
+    .newsletter-page .article-content-right {
         overflow: hidden !important; /* Same as articles 2 & 3 */
-        font-size: 0.85em !important; /* Ensure font size matches */
+        font-size: 0.85em !important; /* Match article-snippet font size */
+        line-height: 1.5 !important; /* Match article-snippet line-height */
+        max-width: 100% !important; /* Ensure it doesn't overflow */
+        box-sizing: border-box !important;
+    }
+    
+    /* Ensure all paragraphs in article-content-right match article-snippet */
+    .newsletter-page .article-content-right p,
+    #newsletter-container .newsletter-page .article-content-right p {
+        font-size: inherit !important; /* Inherit from parent (0.85em) */
+        line-height: inherit !important; /* Inherit from parent (1.5) */
+        margin-bottom: 0 !important; /* Match article-snippet */
+        text-align: justify !important;
     }
     
     /* Also target direct selectors for extra specificity */
     #newsletter-container .newsletter-page .newsletter-content {
         overflow: hidden !important; /* Keep same as desktop */
         max-height: calc(11in - 0.5in) !important; /* Keep structure */
-    }
-    
-    #newsletter-container .newsletter-page .article-content-right {
-        overflow: hidden !important; /* Same as articles 2 & 3 */
-        font-size: 0.85em !important; /* Ensure font size matches */
     }
     
     /* Show mobile-only elements */
