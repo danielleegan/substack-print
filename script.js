@@ -82,17 +82,19 @@ function preprocessRSSContent(htmlContent) {
     const doc = parser.parseFromString(htmlContent, 'text/html');
     
     // FIRST: Find and mark ALL footnote reference links BEFORE any processing
-    // Substack uses <a> tags with href="#fn1", href="#footnote-1", etc.
-    // Collect all footnote links first, then process them all at once
-    const footnoteLinks = Array.from(doc.querySelectorAll('a[href*="#fn"], a[href*="#footnote"], a[href*="footnote"]'));
+    // Only process links with class "footnote-anchor" and specific attributes
+    // Format: <a class="footnote-anchor" data-component-name="FootnoteAnchorToDOM" id="footnote-anchor-1" href="#footnote-1" target="_self">1</a>
+    const footnoteLinks = Array.from(doc.querySelectorAll('a.footnote-anchor[data-component-name="FootnoteAnchorToDOM"]'));
     const footnoteData = [];
     
     footnoteLinks.forEach(link => {
         const href = link.getAttribute('href') || '';
-        // Extract footnote number from href (e.g., "#fn1" -> 1, "#footnote-1" -> 1)
-        const match = href.match(/#fn(\d+)|#footnote-?(\d+)|footnote-?(\d+)/i);
-        if (match) {
-            const num = match[1] || match[2] || match[3];
+        const id = link.getAttribute('id') || '';
+        // Extract footnote number from href (e.g., "#footnote-1" -> 1) or id (e.g., "footnote-anchor-1" -> 1)
+        const hrefMatch = href.match(/#footnote-?(\d+)/i);
+        const idMatch = id.match(/footnote-anchor-?(\d+)/i);
+        if (hrefMatch || idMatch) {
+            const num = (hrefMatch && hrefMatch[1]) || (idMatch && idMatch[1]);
             const linkText = link.textContent.trim() || num;
             
             // Store the footnote data for later processing
@@ -557,13 +559,10 @@ function cleanHTMLContent(html) {
     
     unwantedSelectors.forEach(selector => {
         doc2.querySelectorAll(selector).forEach(el => {
-            // Don't remove footnote links
-            if (el.tagName === 'A' && (
-                el.getAttribute('href')?.includes('#fn') ||
-                el.getAttribute('href')?.includes('#footnote') ||
-                el.getAttribute('data-footnote-ref') ||
-                el.classList.contains('footnote-link')
-            )) {
+            // Don't remove footnote links - only preserve those with class "footnote-anchor"
+            if (el.tagName === 'A' && 
+                el.classList.contains('footnote-anchor') &&
+                el.getAttribute('data-component-name') === 'FootnoteAnchorToDOM') {
                 return; // Skip removing footnote links
             }
             el.remove();
@@ -574,19 +573,18 @@ function cleanHTMLContent(html) {
     // BUT PRESERVE FOOTNOTE SPANS - they were created in preprocessing and must be kept
     // Also preserve any remaining footnote links that weren't converted yet
     doc2.querySelectorAll('a').forEach(link => {
-        // Check if this is a footnote link - preserve it or convert to span if not already done
+        // Check if this is a footnote link - only process links with class "footnote-anchor"
         const href = link.getAttribute('href') || '';
+        const id = link.getAttribute('id') || '';
         const dataRef = link.getAttribute('data-footnote-ref');
-        const isFootnoteLink = href.includes('#fn') || 
-                              href.includes('#footnote') || 
-                              href.includes('footnote') ||
-                              dataRef !== null ||
-                              link.classList.contains('footnote-link');
+        const isFootnoteLink = link.classList.contains('footnote-anchor') &&
+                              link.getAttribute('data-component-name') === 'FootnoteAnchorToDOM';
         
         if (isFootnoteLink) {
-            // If it's still a link (wasn't converted in preprocessing), convert it now
-            const match = href.match(/#fn(\d+)|#footnote-?(\d+)|footnote-?(\d+)/i);
-            const num = match ? (match[1] || match[2] || match[3]) : (dataRef || link.textContent.trim());
+            // Extract footnote number from href or id
+            const hrefMatch = href.match(/#footnote-?(\d+)/i);
+            const idMatch = id.match(/footnote-anchor-?(\d+)/i);
+            const num = (hrefMatch && hrefMatch[1]) || (idMatch && idMatch[1]) || dataRef || link.textContent.trim();
             const linkText = link.textContent.trim() || num;
             
             const span = document.createElement('span');
@@ -649,21 +647,25 @@ function cleanHTMLContent(html) {
     });
     
     // Also check for footnotes in other formats (divs, paragraphs with numbers)
+    // BUT ONLY if they're already in a footnote container or have footnote classes
     doc2.querySelectorAll('div, p').forEach(el => {
+        // Only process if it's already in a footnote container or has footnote-related classes/ids
+        const isInFootnoteContainer = el.closest('[class*="footnote"], [id*="footnote"]') !== null &&
+                                     (el.closest('ol, ul, li') !== null || 
+                                      el.classList.toString().toLowerCase().includes('footnote') ||
+                                      el.id.toLowerCase().includes('footnote'));
+        
+        if (!isInFootnoteContainer) {
+            return; // Skip elements that aren't in footnote containers
+        }
+        
         const text = el.textContent || '';
         // Check if this looks like a footnote (starts with number, short content)
         if (text.match(/^\d+\.?\s/) && text.length < 500) {
             const match = text.match(/^(\d+)\.?\s*(.+)$/);
             if (match) {
-                // Check if it's inside a footnotes section
-                const parent = el.parentElement;
-                if (parent && (
-                    parent.classList.toString().toLowerCase().includes('footnote') ||
-                    parent.id.toLowerCase().includes('footnote')
-                )) {
-                    // Flatten it
-                    el.textContent = match[1] + '. ' + match[2].trim().replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ');
-                }
+                // Flatten it
+                el.textContent = match[1] + '. ' + match[2].trim().replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ');
             }
         }
     });
@@ -2553,6 +2555,7 @@ function markFootnotesSections() {
             });
             
             // 2. Also look for any list items that look like footnotes (fallback)
+            // BUT ONLY if they're in a footnote container or have footnote-related classes/ids
             // This catches footnotes that haven't been marked as footnotes-section yet
             const allListItems = contentDiv.querySelectorAll('li');
             console.log(`Page ${pageIndex}, contentDiv: Found ${allListItems.length} list items to check`);
@@ -2560,6 +2563,15 @@ function markFootnotesSections() {
                 // Skip if inside a heading or other non-footnote context
                 if (item.closest('h1, h2, h3, h4, h5, h6')) {
                     return;
+                }
+                
+                // Only process if it's in a footnote container or has footnote-related classes/ids
+                const isInFootnoteContainer = item.closest('[class*="footnote"], [id*="footnote"]') !== null;
+                const hasFootnoteClass = item.classList.toString().toLowerCase().includes('footnote') ||
+                                       item.id.toLowerCase().includes('footnote');
+                
+                if (!isInFootnoteContainer && !hasFootnoteClass) {
+                    return; // Skip list items that aren't in footnote containers
                 }
                 
                 const text = item.textContent || '';
@@ -3319,8 +3331,8 @@ function markFootnotesSections() {
             }
         });
         
-        // Method 3: Check for any remaining links
-        const links = Array.from(contentDiv.querySelectorAll('a[href*="#fn"], a[href*="#footnote"], a[data-footnote-ref], a.footnote-link'));
+        // Method 3: Check for any remaining links - ONLY footnote-anchor links
+        const links = Array.from(contentDiv.querySelectorAll('a.footnote-anchor[data-component-name="FootnoteAnchorToDOM"]'));
         links.forEach(link => {
             // Skip if inside footnotes section
             const isInFootnotesList = link.closest('.footnotes-section, .footnotes-list') !== null ||
@@ -3329,15 +3341,13 @@ function markFootnotesSections() {
             
             if (!isInFootnotesList && !footnoteRefData.some(d => d.element === link)) {
                 let num = null;
-                const dataRef = link.getAttribute('data-footnote-ref');
-                if (dataRef) {
-                    num = parseInt(dataRef, 10);
-                } else {
-                    const href = link.getAttribute('href') || '';
-                    const match = href.match(/#fn(\d+)|#footnote-?(\d+)|footnote-?(\d+)/i);
-                    if (match) {
-                        num = parseInt(match[1] || match[2] || match[3], 10);
-                    }
+                const href = link.getAttribute('href') || '';
+                const id = link.getAttribute('id') || '';
+                // Extract footnote number from href or id
+                const hrefMatch = href.match(/#footnote-?(\d+)/i);
+                const idMatch = id.match(/footnote-anchor-?(\d+)/i);
+                if (hrefMatch || idMatch) {
+                    num = parseInt((hrefMatch && hrefMatch[1]) || (idMatch && idMatch[1]), 10);
                 }
                 
                 if (num !== null && !isNaN(num)) {
