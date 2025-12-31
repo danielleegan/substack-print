@@ -2239,40 +2239,29 @@ header ~ p a {
         display: flex !important;
     }
     
-    /* Fix content cutoff on mobile - allow overflow while maintaining page structure */
-    /* Keep max-height to maintain structure, but allow overflow: visible for content that slightly exceeds */
+    /* Fix content cutoff on mobile - maintain same structure as desktop */
     .newsletter-page .newsletter-content {
         width: 8in;
         max-width: 8in;
-        overflow: visible !important;
+        overflow: hidden !important; /* Keep same as desktop */
         max-height: calc(11in - 0.5in) !important; /* Keep structure */
     }
     
-    /* Allow article containers to overflow if content exceeds */
-    .newsletter-page .newsletter-content .article-featured {
-        overflow: visible !important;
-    }
-    
-    .newsletter-page .newsletter-content .article-featured .article-col-right {
-        overflow: visible !important;
-    }
-    
+    /* Ensure article-content-right has same constraints as article-content (articles 2 & 3) */
     .newsletter-page .newsletter-content .article-featured .article-col-right .article-content-right {
-        overflow: visible !important;
+        overflow: hidden !important; /* Same as articles 2 & 3 */
+        font-size: 0.85em !important; /* Ensure font size matches */
     }
     
     /* Also target direct selectors for extra specificity */
     #newsletter-container .newsletter-page .newsletter-content {
-        overflow: visible !important;
+        overflow: hidden !important; /* Keep same as desktop */
         max-height: calc(11in - 0.5in) !important; /* Keep structure */
     }
     
-    #newsletter-container .newsletter-page .article-col-right {
-        overflow: visible !important;
-    }
-    
     #newsletter-container .newsletter-page .article-content-right {
-        overflow: visible !important;
+        overflow: hidden !important; /* Same as articles 2 & 3 */
+        font-size: 0.85em !important; /* Ensure font size matches */
     }
     
     /* Show mobile-only elements */
