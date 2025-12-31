@@ -239,6 +239,11 @@ form button[type="submit"] {
     display: none;
 }
 
+/* Mobile-only elements - hidden on desktop by default */
+.mobile-only {
+    display: none;
+}
+
 #newsletter-container {
     margin-top: 0;
 }
@@ -2066,8 +2071,9 @@ header ~ p a {
     }
     
     header .disclaimer {
-        font-size: 0.85em;
-        padding: 0 15px;
+        font-size: 0.75em;
+        padding-left: 0;
+        padding-right: 0;
     }
     
     .input-section {
@@ -2098,23 +2104,20 @@ header ~ p a {
     
     .newsletter-controls {
         padding: 10px;
-    }
-    
-    .newsletter-controls {
         flex-direction: column;
         gap: 10px;
     }
     
+    /* Hide print button on mobile */
     .newsletter-controls button {
-        width: 100%;
-        margin: 0;
-        box-sizing: border-box;
+        display: none !important;
     }
     
     #newsletter-container {
         width: 100%;
-        margin-top: 20px;
-        padding: 0;
+        margin-top: 0 !important;
+        padding: 0 !important;
+        padding-top: 0 !important;
         box-sizing: border-box;
         overflow-x: hidden;
         overflow-y: auto;
@@ -2166,6 +2169,70 @@ header ~ p a {
     .newsletter-content {
         width: 8in;
         max-width: 8in;
+    }
+    
+    /* Show mobile-only elements */
+    .mobile-only {
+        display: block !important;
+    }
+    
+    /* Mobile message styling - smaller font */
+    #mobile-message {
+        padding: 15px 15px 0 15px !important;
+        margin: 15px 0 0 0 !important;
+        margin-bottom: 0 !important;
+        padding-bottom: 0 !important;
+        text-align: center;
+        font-family: 'Georgia', 'Times New Roman', serif;
+        font-size: 0.8em;
+        line-height: 1.5;
+        color: #000;
+        background: transparent;
+    }
+    
+    #mobile-message p {
+        margin: 0;
+    }
+    
+    /* Mobile labels styling */
+    #mobile-front-page-label,
+    #mobile-example-label {
+        padding: 15px 15px 10px 15px;
+        margin: 0;
+        text-align: left;
+        font-family: 'Georgia', 'Times New Roman', serif;
+        font-size: 1em;
+        color: #000;
+        background: transparent;
+    }
+    
+    #mobile-front-page-label {
+        margin-top: 10px;
+    }
+    
+    #mobile-example-label {
+        margin-top: 20px;
+    }
+    
+    /* Mobile example images styling */
+    #mobile-example-images {
+        margin-top: 0 !important;
+        padding: 0 15px;
+        padding-top: 0 !important;
+        text-align: center;
+    }
+    
+    #mobile-example-images img {
+        max-width: 100%;
+        height: auto;
+        width: 100%;
+        display: block;
+        margin: 0 auto;
+        margin-bottom: 0;
+    }
+    
+    #mobile-example-images img:not(:last-child) {
+        margin-bottom: 10px;
     }
 }
 

@@ -41,12 +41,32 @@
             <div id="error" class="error hidden"></div>
         </div>
         
+        <div id="mobile-message" class="mobile-only hidden">
+            <p>FYI the newspaper conversion doesn't really work on mobile :( so just showing you a preview of your front page! Open this on desktop to get the whole newsletter, I have an example of what this looks like below!</p>
+        </div>
+        
         <div id="newsletter-container" class="hidden">
             <div class="newsletter-controls">
                 <button onclick="if(typeof posthog!=='undefined'){posthog.capture('print_clicked');}window.print();">Print as PDF</button>
             </div>
+            <div id="mobile-front-page-label" class="mobile-only hidden">
+                <strong>Your Front Page:</strong>
+            </div>
             <div id="newsletter" class="newsletter">
                 <!-- Newsletter content will be inserted here -->
+            </div>
+            <div id="mobile-example-label" class="mobile-only hidden">
+                <strong>Example Newsletter:</strong>
+            </div>
+            <div id="mobile-example-images" class="mobile-only hidden">
+                <img src="example-output/normal/front-page.jpg" alt="Example newsletter front page">
+                <img src="example-output/normal/page-2.jpg" alt="Example newsletter page 2">
+                <img src="example-output/normal/page-3.jpg" alt="Example newsletter page 3">
+                <img src="example-output/normal/page-4.jpg" alt="Example newsletter page 4">
+                <img src="example-output/normal/page-5.jpg" alt="Example newsletter page 5">
+                <img src="example-output/normal/page-6.jpg" alt="Example newsletter page 6">
+                <img src="example-output/normal/page-7.jpg" alt="Example newsletter page 7">
+                <img src="example-output/normal/page-8.jpg" alt="Example newsletter page 8">
             </div>
         </div>
     </div>

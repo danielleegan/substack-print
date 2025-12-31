@@ -43,6 +43,33 @@ function updatePageVisibility() {
     });
 }
 
+// Function to show/hide mobile-only elements
+function updateMobileElements() {
+    const mobileMessage = document.getElementById('mobile-message');
+    const mobileImages = document.getElementById('mobile-example-images');
+    const mobileFrontPageLabel = document.getElementById('mobile-front-page-label');
+    const mobileExampleLabel = document.getElementById('mobile-example-label');
+    const newsletterContainer = document.getElementById('newsletter-container');
+    
+    // Only show mobile elements if newsletter is visible and we're on mobile
+    if (mobileMessage && mobileImages && newsletterContainer) {
+        const isVisible = !newsletterContainer.classList.contains('hidden');
+        const mobile = isMobile();
+        
+        if (isVisible && mobile) {
+            mobileMessage.classList.remove('hidden');
+            mobileImages.classList.remove('hidden');
+            if (mobileFrontPageLabel) mobileFrontPageLabel.classList.remove('hidden');
+            if (mobileExampleLabel) mobileExampleLabel.classList.remove('hidden');
+        } else {
+            mobileMessage.classList.add('hidden');
+            mobileImages.classList.add('hidden');
+            if (mobileFrontPageLabel) mobileFrontPageLabel.classList.add('hidden');
+            if (mobileExampleLabel) mobileExampleLabel.classList.add('hidden');
+        }
+    }
+}
+
 // PRE-PROCESSING STEP: Flatten footnotes before any newspaper styling or formatting
 // This function processes raw HTML content from RSS feeds to ensure footnotes are single-line
 function preprocessRSSContent(htmlContent) {
@@ -1188,6 +1215,7 @@ async function processSubstackURL(url) {
     loadingEl.classList.remove('hidden');
     errorEl.classList.add('hidden');
     newsletterContainer.classList.add('hidden');
+    updateMobileElements(); // Hide mobile message and image
     
     // Update loading message to show we're working
     loadingEl.textContent = 'Loading articles...';
@@ -1255,6 +1283,7 @@ async function processSubstackURL(url) {
         // Show newsletter container immediately (progressive rendering - show structure first)
         newsletterContainer.classList.remove('hidden');
         loadingEl.classList.add('hidden');
+        updateMobileElements(); // Show/hide mobile message and image
         
         // Generate newsletter HTML (using existing function)
         const newsletterHTML = generateNewsletter(publication, limitedArticles);
@@ -1263,6 +1292,7 @@ async function processSubstackURL(url) {
         // Apply mode immediately after rendering
         applyModeToPages();
         updatePageVisibility(); // Hide pages 2+ on mobile
+        updateExampleImages(); // Update example images based on mode
         
         // After rendering, trim Article 1 content to fit on page 1, then split pages dynamically
         // Use a longer delay (500ms) to ensure horizontal bars are fully rendered and layout is stable
@@ -1329,6 +1359,7 @@ async function processSubstackURL(url) {
         // Show newsletter, hide loading
         loadingEl.classList.add('hidden');
         newsletterContainer.classList.remove('hidden');
+        updateMobileElements(); // Show/hide mobile message and image
         
         // Scroll to newsletter
         newsletterContainer.scrollIntoView({ behavior: 'smooth' });
@@ -1365,6 +1396,7 @@ function resetForm() {
     document.getElementById('newsletter-container').classList.add('hidden');
     document.getElementById('error').classList.add('hidden');
     document.getElementById('newsletter').innerHTML = '';
+    updateMobileElements(); // Hide mobile message and image
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -3900,12 +3932,32 @@ function applyModeToPages() {
         }
     });
     
+    // Update example images on mobile
+    updateExampleImages();
+    
     // Track mode change
     if (typeof posthog !== 'undefined' && pages.length > 0) {
         posthog.capture('mode_changed', {
             mode: mode
         });
     }
+}
+
+// Function to update example images based on current mode (mobile only)
+function updateExampleImages() {
+    const mode = getCurrentMode();
+    const exampleImagesContainer = document.getElementById('mobile-example-images');
+    
+    if (!exampleImagesContainer) return;
+    
+    const images = exampleImagesContainer.querySelectorAll('img');
+    const imageNames = ['front-page', 'page-2', 'page-3', 'page-4', 'page-5', 'page-6', 'page-7', 'page-8'];
+    
+    images.forEach((img, index) => {
+        const baseName = imageNames[index];
+        // Update image source based on current mode
+        img.src = `example-output/${mode}/${baseName}.jpg`;
+    });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -3936,6 +3988,7 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(() => {
             updatePageVisibility();
+            updateMobileElements(); // Update mobile elements on resize
         }, 100);
     });
 });
