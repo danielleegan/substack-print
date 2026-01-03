@@ -1961,10 +1961,19 @@ header ~ p a {
         max-height: 2in !important;
     }
     
+    /* Center images in print mode */
+    .article-image img,
     .article-columns-three-css img {
         display: block !important;
         margin-left: auto !important;
         margin-right: auto !important;
+        width: auto !important; /* Allow image to size naturally for centering */
+        max-width: 100% !important; /* But don't exceed container width */
+    }
+    
+    /* Also center the article-image container on front page */
+    .article-col-left .article-image {
+        text-align: center !important;
     }
     
     .article-columns-three img {
