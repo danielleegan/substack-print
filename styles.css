@@ -12,6 +12,8 @@
     box-sizing: border-box;
 }
 
+.front-page *,
+.body-pages *,
 .newsletter-page * {
     max-width: 100%;
     word-wrap: break-word;
@@ -342,23 +344,24 @@ header ~ p a {
     border-radius: 0;
 }
 
+/* Newsletter pages - base styling */
 .newsletter-page {
     width: 8.5in;
-    height: 11in;
+    min-height: 11in;
     padding: 0.25in;
-    background: white;
+    background: #FFFCF3;
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    margin: 0 auto;
+    margin: 0 auto 20px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     position: relative;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+    box-sizing: border-box;
     page-break-after: always;
     page-break-inside: avoid;
-    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .newsletter-page.mode-evil {
@@ -382,7 +385,106 @@ header ~ p a {
     background-repeat: no-repeat !important;
 }
 
+/* Front page - special 2-column layout */
+.front-page {
+    width: 8.5in;
+    min-height: 11in;
+    padding: 0.25in;
+    background: white;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    margin: 0 auto;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    page-break-after: always;
+    page-break-inside: avoid;
+}
+
+.newsletter-page.mode-evil {
+    background-image: url('./backgrounds/test-background.jpg') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+}
+
+.newsletter-page.mode-chris-best {
+    background-image: url('./backgrounds/chris-best.jpg') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+}
+
+.newsletter-page.mode-chris-worst {
+    background-image: url('./backgrounds/chris-worst.jpg') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+}
+
+.front-page.mode-evil {
+    background-image: url('./backgrounds/test-background.jpg') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+}
+
+.front-page.mode-chris-best {
+    background-image: url('./backgrounds/chris-best.jpg') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+}
+
+.front-page.mode-chris-worst {
+    background-image: url('./backgrounds/chris-worst.jpg') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+}
+
+/* Body pages - 3-column layout with CSS paged media */
+.body-pages {
+    width: 8.5in;
+    padding: 0.25in;
+    background: white;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    margin: 0 auto;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    position: relative;
+    box-sizing: border-box;
+    break-before: page;
+}
+
+.body-pages.mode-evil {
+    background-image: url('./backgrounds/test-background.jpg') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+}
+
+.body-pages.mode-chris-best {
+    background-image: url('./backgrounds/chris-best.jpg') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+}
+
+.body-pages.mode-chris-worst {
+    background-image: url('./backgrounds/chris-worst.jpg') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+}
+
 /* Page numbers for pages 2+ */
+.body-pages .page-number,
 .newsletter-page .page-number {
     position: absolute;
     bottom: 0.25in;
@@ -408,8 +510,7 @@ header ~ p a {
     flex-direction: column;
     gap: 0;
     flex: 1;
-    overflow: hidden;
-    max-height: calc(11in - 0.5in);
+    overflow: visible;
     box-sizing: border-box;
     min-height: 0;
     width: 8in;
@@ -987,25 +1088,18 @@ header ~ p a {
 .article-columns-three-css {
     column-count: 3;
     column-gap: 0.25in;
-    column-fill: balance; /* Reverted - auto breaks column layout */
+    column-fill: balance;
     column-rule: 1px solid #000;
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
-    min-height: calc(11in - 0.5in);
-    height: auto;
-    max-height: calc(11in - 0.5in);
-    overflow: hidden;
+    overflow: visible;
     position: relative;
     font-size: 0.85em;
     line-height: 1.5;
 }
 
-/* Ensure pages with minimal content still display */
-.newsletter-page:last-child .article-columns-three-css {
-    min-height: auto;
-    height: auto;
-}
+/* CSS paged media handles page breaks automatically */
 
 .article-columns-three-css p {
     margin-bottom: 0;
@@ -1537,6 +1631,19 @@ header ~ p a {
 }
 
 /* Horizontal bar after each article title - half width, centered, with space above and below */
+/* Wrapper to keep article title and bar together */
+.article-columns-three-css .article-title-wrapper {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    -webkit-column-break-inside: avoid;
+    -moz-column-break-inside: avoid;
+    column-break-inside: avoid;
+}
+
+.article-columns-three-css .article-title-wrapper .article-title {
+    margin-top: 0.25in;
+}
+
 .article-columns-three-css .article-title-bar {
     display: block;
     width: 50%;
@@ -1649,29 +1756,29 @@ header ~ p a {
     padding-top: 0.25in !important; /* Space between line and title text */
 }
 
-/* Extra space above horizontal lines on pages 2+ */
-.newsletter-page:not(:first-child) .article-columns-three-css p + h2.article-title,
-.newsletter-page:not(:first-child) .article-columns-three-css p + .article-title,
-.newsletter-page:not(:first-child) .article-columns-three-css ul + h2.article-title,
-.newsletter-page:not(:first-child) .article-columns-three-css ul + .article-title,
-.newsletter-page:not(:first-child) .article-columns-three-css ol + h2.article-title,
-.newsletter-page:not(:first-child) .article-columns-three-css ol + .article-title,
-.newsletter-page:not(:first-child) .article-columns-three-css img + h2.article-title,
-.newsletter-page:not(:first-child) .article-columns-three-css img + .article-title,
-.newsletter-page:not(:first-child) .article-columns-three-css h1 + h2.article-title,
-.newsletter-page:not(:first-child) .article-columns-three-css h1 + .article-title,
-.newsletter-page:not(:first-child) .article-columns-three-css h2 + h2.article-title,
-.newsletter-page:not(:first-child) .article-columns-three-css h2 + .article-title,
-.newsletter-page:not(:first-child) .article-columns-three-css h3 + h2.article-title,
-.newsletter-page:not(:first-child) .article-columns-three-css h3 + .article-title,
-.newsletter-page:not(:first-child) .article-columns-three-css h4 + h2.article-title,
-.newsletter-page:not(:first-child) .article-columns-three-css h4 + .article-title,
-.newsletter-page:not(:first-child) .article-columns-three-css h5 + h2.article-title,
-.newsletter-page:not(:first-child) .article-columns-three-css h5 + .article-title,
-.newsletter-page:not(:first-child) .article-columns-three-css h6 + h2.article-title,
-.newsletter-page:not(:first-child) .article-columns-three-css h6 + .article-title,
-.newsletter-page:not(:first-child) .article-columns-three-css div + h2.article-title,
-.newsletter-page:not(:first-child) .article-columns-three-css div + .article-title {
+/* Extra space above horizontal lines on body pages */
+.body-pages .article-columns-three-css p + h2.article-title,
+.body-pages .article-columns-three-css p + .article-title,
+.body-pages .article-columns-three-css ul + h2.article-title,
+.body-pages .article-columns-three-css ul + .article-title,
+.body-pages .article-columns-three-css ol + h2.article-title,
+.body-pages .article-columns-three-css ol + .article-title,
+.body-pages .article-columns-three-css img + h2.article-title,
+.body-pages .article-columns-three-css img + .article-title,
+.body-pages .article-columns-three-css h1 + h2.article-title,
+.body-pages .article-columns-three-css h1 + .article-title,
+.body-pages .article-columns-three-css h2 + h2.article-title,
+.body-pages .article-columns-three-css h2 + .article-title,
+.body-pages .article-columns-three-css h3 + h2.article-title,
+.body-pages .article-columns-three-css h3 + .article-title,
+.body-pages .article-columns-three-css h4 + h2.article-title,
+.body-pages .article-columns-three-css h4 + .article-title,
+.body-pages .article-columns-three-css h5 + h2.article-title,
+.body-pages .article-columns-three-css h5 + .article-title,
+.body-pages .article-columns-three-css h6 + h2.article-title,
+.body-pages .article-columns-three-css h6 + .article-title,
+.body-pages .article-columns-three-css div + h2.article-title,
+.body-pages .article-columns-three-css div + .article-title {
     margin-top: 0.5in !important;
 }
 
@@ -1791,7 +1898,12 @@ header ~ p a {
     text-align: center;
 }
 
-/* Print Styles */
+/* Print Styles - CSS Paged Media */
+@page {
+    size: 8.5in 11in;
+    margin: 0;
+}
+
 @media print {
     body {
         background: white;
@@ -1837,8 +1949,42 @@ header ~ p a {
         height: 11in;
         padding: 0.25in;
         page-break-after: always;
-        page-break-before: always;
+        page-break-inside: avoid;
         overflow: hidden;
+        margin: 0;
+        box-shadow: none;
+        box-sizing: border-box;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        color-adjust: exact;
+    }
+    
+    .front-page {
+        width: 8.5in;
+        height: 11in;
+        padding: 0.25in;
+        page-break-after: always;
+        page-break-inside: avoid;
+        overflow: hidden;
+        margin: 0;
+        box-shadow: none;
+        box-sizing: border-box;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        color-adjust: exact;
+    }
+    
+    .body-pages {
+        width: 8.5in;
+        padding: 0.25in;
+        break-before: page;
+        overflow: visible;
         margin: 0;
         box-shadow: none;
         box-sizing: border-box;
@@ -1858,22 +2004,31 @@ header ~ p a {
         object-fit: contain;
     }
     
-    .newsletter-page.mode-evil {
+    .front-page.mode-evil,
+    .body-pages.mode-evil {
         background-image: url('backgrounds/test-background.jpg');
     }
     
-    .newsletter-page.mode-chris-best {
+    .front-page.mode-chris-best,
+    .body-pages.mode-chris-best {
         background-image: url('backgrounds/chris-best.jpg');
     }
     
-    .newsletter-page.mode-chris-worst {
+    .front-page.mode-chris-worst,
+    .body-pages.mode-chris-worst {
         background-image: url('backgrounds/chris-worst.jpg');
     }
     
     .newsletter-content {
-        overflow: hidden;
-        max-height: calc(11in - 0.5in);
+        overflow: visible;
         box-sizing: border-box;
+    }
+    
+    .article-columns-three-css {
+        overflow: visible;
+        height: auto;
+        min-height: 0;
+        max-height: none;
     }
     
     .article-columns-three {
@@ -2038,38 +2193,46 @@ header ~ p a {
         padding-top: 0.25in !important;
     }
     
-    /* Extra space above horizontal lines on pages 2+ */
-    .newsletter-page:not(:first-child) .article-columns-three-css p + h2.article-title,
-    .newsletter-page:not(:first-child) .article-columns-three-css p + .article-title,
-    .newsletter-page:not(:first-child) .article-columns-three-css ul + h2.article-title,
-    .newsletter-page:not(:first-child) .article-columns-three-css ul + .article-title,
-    .newsletter-page:not(:first-child) .article-columns-three-css ol + h2.article-title,
-    .newsletter-page:not(:first-child) .article-columns-three-css ol + .article-title,
-    .newsletter-page:not(:first-child) .article-columns-three-css img + h2.article-title,
-    .newsletter-page:not(:first-child) .article-columns-three-css img + .article-title,
-    .newsletter-page:not(:first-child) .article-columns-three-css h1 + h2.article-title,
-    .newsletter-page:not(:first-child) .article-columns-three-css h1 + .article-title,
-    .newsletter-page:not(:first-child) .article-columns-three-css h2 + h2.article-title,
-    .newsletter-page:not(:first-child) .article-columns-three-css h2 + .article-title,
-    .newsletter-page:not(:first-child) .article-columns-three-css h3 + h2.article-title,
-    .newsletter-page:not(:first-child) .article-columns-three-css h3 + .article-title,
-    .newsletter-page:not(:first-child) .article-columns-three-css h4 + h2.article-title,
-    .newsletter-page:not(:first-child) .article-columns-three-css h4 + .article-title,
-    .newsletter-page:not(:first-child) .article-columns-three-css h5 + h2.article-title,
-    .newsletter-page:not(:first-child) .article-columns-three-css h5 + .article-title,
-    .newsletter-page:not(:first-child) .article-columns-three-css h6 + h2.article-title,
-    .newsletter-page:not(:first-child) .article-columns-three-css h6 + .article-title,
-    .newsletter-page:not(:first-child) .article-columns-three-css div + h2.article-title,
-    .newsletter-page:not(:first-child) .article-columns-three-css div + .article-title {
+    /* Extra space above horizontal lines on body pages */
+    .body-pages .article-columns-three-css p + h2.article-title,
+    .body-pages .article-columns-three-css p + .article-title,
+    .body-pages .article-columns-three-css ul + h2.article-title,
+    .body-pages .article-columns-three-css ul + .article-title,
+    .body-pages .article-columns-three-css ol + h2.article-title,
+    .body-pages .article-columns-three-css ol + .article-title,
+    .body-pages .article-columns-three-css img + h2.article-title,
+    .body-pages .article-columns-three-css img + .article-title,
+    .body-pages .article-columns-three-css h1 + h2.article-title,
+    .body-pages .article-columns-three-css h1 + .article-title,
+    .body-pages .article-columns-three-css h2 + h2.article-title,
+    .body-pages .article-columns-three-css h2 + .article-title,
+    .body-pages .article-columns-three-css h3 + h2.article-title,
+    .body-pages .article-columns-three-css h3 + .article-title,
+    .body-pages .article-columns-three-css h4 + h2.article-title,
+    .body-pages .article-columns-three-css h4 + .article-title,
+    .body-pages .article-columns-three-css h5 + h2.article-title,
+    .body-pages .article-columns-three-css h5 + .article-title,
+    .body-pages .article-columns-three-css h6 + h2.article-title,
+    .body-pages .article-columns-three-css h6 + .article-title,
+    .body-pages .article-columns-three-css div + h2.article-title,
+    .body-pages .article-columns-three-css div + .article-title {
         margin-top: 0.5in !important;
     }
     
-    .newsletter-page:first-child {
+    .newsletter-page {
         page-break-before: auto;
     }
     
-    .newsletter-page:last-child {
-        page-break-after: auto;
+    .newsletter-page:not(:first-child) {
+        page-break-before: always;
+    }
+    
+    .front-page {
+        page-break-before: auto;
+    }
+    
+    .body-pages {
+        break-before: page;
     }
     
     .article-featured,
@@ -2221,35 +2384,48 @@ header ~ p a {
         width: 8.5in;
     }
     
+    #newsletter-container .front-page,
+    #newsletter-container .body-pages,
     #newsletter-container .newsletter-page {
         width: 8.5in;
-        height: 11in;
+        min-height: 11in;
         margin-left: 0;
         margin-right: auto;
         margin-bottom: calc(-11in * (1 - 0.4) + 8px);
         overflow: visible !important; /* Allow content to overflow on mobile when scaled */
     }
     
+    #newsletter-container .body-pages:last-child,
     #newsletter-container .newsletter-page:last-child {
         margin-bottom: 0;
     }
     
-    /* Hide pages 2+ on mobile, only show front page */
-    #newsletter-container .newsletter-page:not(:first-child),
-    #newsletter .newsletter-page:not(:first-child),
-    .newsletter .newsletter-page:not(:first-child) {
+    /* Hide body-pages on mobile, only show front page */
+    #newsletter-container .body-pages,
+    #newsletter .body-pages,
+    .newsletter .body-pages {
         display: none !important;
     }
     
-    /* Ensure first page is visible */
-    #newsletter-container .newsletter-page:first-child,
-    #newsletter .newsletter-page:first-child,
-    .newsletter .newsletter-page:first-child {
+    /* Hide newsletter pages 2+ on mobile (handled by JavaScript) */
+    #newsletter-container .newsletter-page:not(:first-child) {
+        display: none !important;
+    }
+
+    /* Ensure front page is visible */
+    #newsletter-container .front-page,
+    #newsletter .front-page,
+    .newsletter .front-page {
+        display: flex !important;
+    }
+    
+    /* Ensure first newsletter page is visible on mobile */
+    #newsletter-container .newsletter-page:first-child {
         display: flex !important;
     }
     
     /* Fix content cutoff on mobile - maintain same structure as desktop */
-    .newsletter-page .newsletter-content {
+    .front-page .newsletter-content {
         width: 8in;
         max-width: 8in;
         overflow: hidden !important; /* Keep same as desktop */
@@ -2257,9 +2433,9 @@ header ~ p a {
     }
     
     /* Ensure article-content-right matches article-snippet exactly on mobile */
-    .newsletter-page .newsletter-content .article-featured .article-col-right .article-content-right,
-    #newsletter-container .newsletter-page .article-content-right,
-    .newsletter-page .article-content-right {
+    .front-page .newsletter-content .article-featured .article-col-right .article-content-right,
+    #newsletter-container .front-page .article-content-right,
+    .front-page .article-content-right {
         overflow: hidden !important; /* Same as articles 2 & 3 */
         font-size: 0.85em !important; /* Match article-snippet font size */
         line-height: 1.5 !important; /* Match article-snippet line-height */
@@ -2268,8 +2444,8 @@ header ~ p a {
     }
     
     /* Ensure all paragraphs in article-content-right match article-snippet */
-    .newsletter-page .article-content-right p,
-    #newsletter-container .newsletter-page .article-content-right p {
+    .front-page .article-content-right p,
+    #newsletter-container .front-page .article-content-right p {
         font-size: inherit !important; /* Inherit from parent (0.85em) */
         line-height: inherit !important; /* Inherit from parent (1.5) */
         margin-bottom: 0 !important; /* Match article-snippet */
@@ -2277,7 +2453,7 @@ header ~ p a {
     }
     
     /* Also target direct selectors for extra specificity */
-    #newsletter-container .newsletter-page .newsletter-content {
+    #newsletter-container .front-page .newsletter-content {
         overflow: hidden !important; /* Keep same as desktop */
         max-height: calc(11in - 0.5in) !important; /* Keep structure */
     }
@@ -2382,6 +2558,8 @@ header ~ p a {
         flex-direction: column !important;
     }
     
+    #newsletter-container .front-page,
+    #newsletter-container .body-pages,
     #newsletter-container .newsletter-page {
         transform: none !important;
         margin-bottom: 20px !important;
@@ -2395,7 +2573,7 @@ header ~ p a {
         display: flex !important; /* Ensure all pages are visible on desktop */
     }
     
-    #newsletter-container .newsletter-page:last-child {
+    #newsletter-container .body-pages:last-child {
         margin-bottom: 0 !important;
     }
     

@@ -172,7 +172,7 @@ function preprocessRSSContent(htmlContent) {
             let footnoteText = li.textContent || '';
             
             // Remove any leading number that might be in the text
-            footnoteText = footnoteText.replace(/^\d+\.?\s*/, '').trim();
+            footnoteText = footnoteText.trim();
             
             // Remove all newlines and normalize whitespace
             footnoteText = footnoteText.replace(/\n+/g, ' ').replace(/\r+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -396,14 +396,14 @@ function normalizeFootnotes(html) {
                 // Get the footnote text (remove any leading numbers)
                 // CRITICAL: Remove ALL line breaks to ensure single-line format
                 let footnoteText = li.textContent || '';
-                footnoteText = footnoteText.replace(/^\d+\.?\s*/, '').trim();
+                footnoteText = footnoteText.trim();
                 // Remove all newlines, line breaks, <br> tags content, and normalize whitespace
                 // First remove any HTML line breaks
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = li.innerHTML;
                 tempDiv.querySelectorAll('br').forEach(br => br.replaceWith(' '));
                 footnoteText = tempDiv.textContent || footnoteText;
-                footnoteText = footnoteText.replace(/^\d+\.?\s*/, '').trim();
+                footnoteText = footnoteText.trim();
                 // Remove all newlines and normalize whitespace to single spaces
                 footnoteText = footnoteText.replace(/\n+/g, ' ').replace(/\r+/g, ' ').replace(/\s+/g, ' ').trim();
             
@@ -497,39 +497,10 @@ function cleanHTMLContent(html) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
     
-    // Find ALL lists that might be footnotes and flatten them completely
-    // This is CRITICAL - must happen before any other processing
-    doc.querySelectorAll('ol, ul').forEach(list => {
-        const items = Array.from(list.querySelectorAll('li'));
-        items.forEach((li, index) => {
-            // Remove ALL <br> tags first
-            li.querySelectorAll('br').forEach(br => br.remove());
-            
-            // Get the number
-            let num = '';
-            if (list.tagName === 'OL') {
-                num = (index + 1).toString();
-            } else {
-                const text = li.textContent || '';
-                const match = text.match(/^(\d+)\.?\s*/);
-                num = match ? match[1] : (index + 1).toString();
-            }
-            
-            // Get ALL text content, ignoring ALL HTML tags
-            // Use textContent to get plain text without any HTML structure
-            let text = li.textContent || '';
-            // Remove leading number if present
-            text = text.replace(/^\d+\.?\s*/, '').trim();
-            // Remove ALL newlines, carriage returns, and normalize whitespace
-            text = text.replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ').trim();
-            
-            // CRITICAL: Replace entire list item content with plain text
-            // This ensures NO HTML tags, NO newlines, just "N. text"
-            li.innerHTML = '';
-            const textNode = document.createTextNode(num + '. ' + text);
-            li.appendChild(textNode);
-        });
-    });
+    // NOTE: List processing was removed because it was causing double numbering
+    // Regular ordered lists (OL) get their numbers from CSS automatically
+    // Footnote lists are already processed in preprocessRSSContent()
+    // This function should NOT process lists to avoid duplicate numbering
     
     html = doc.body.innerHTML;
     
@@ -573,6 +544,44 @@ function cleanHTMLContent(html) {
     // BUT PRESERVE FOOTNOTE SPANS - they were created in preprocessing and must be kept
     // Also preserve any remaining footnote links that weren't converted yet
     doc2.querySelectorAll('a').forEach(link => {
+        // Check if this is a MentionUser link - extract name from data-attrs
+        const componentName = link.getAttribute('data-component-name');
+        if (componentName === 'MentionUser') {
+            const dataAttrs = link.getAttribute('data-attrs');
+            let name = link.textContent || ''; // Fallback to text content
+            
+            if (dataAttrs) {
+                try {
+                    // Parse JSON from data-attrs attribute (may be HTML-encoded)
+                    // First try parsing directly
+                    let attrs;
+                    try {
+                        attrs = JSON.parse(dataAttrs);
+                    } catch (e1) {
+                        // If direct parse fails, try HTML-decoding first
+                        const tempDiv = doc2.createElement('div');
+                        tempDiv.innerHTML = dataAttrs;
+                        const decoded = tempDiv.textContent || tempDiv.innerText || dataAttrs;
+                        attrs = JSON.parse(decoded);
+                    }
+                    
+                    if (attrs && typeof attrs === 'object' && attrs.name) {
+                        name = attrs.name;
+                    }
+                } catch (e) {
+                    // If parsing fails, fall back to text content
+                    console.warn('Failed to parse data-attrs for MentionUser:', dataAttrs, e);
+                }
+            }
+            
+            // Replace link with plain text containing the name
+            const textNode = doc2.createTextNode(name);
+            if (link.parentNode) {
+                link.parentNode.replaceChild(textNode, link);
+            }
+            return;
+        }
+        
         // Check if this is a footnote link - only process links with class "footnote-anchor"
         const href = link.getAttribute('href') || '';
         const id = link.getAttribute('id') || '';
@@ -1342,13 +1351,15 @@ async function processSubstackURL(url) {
                     updatePageVisibility(); // Hide pages 2+ on mobile
                     updateArticlePageReferences(limitedArticles);
                     adjustAllTitleSizes();
-                    preventOrphanedHeadings(); // Prevent headings from being orphaned at bottom of columns
+                    // DISABLED: preventOrphanedHeadings() causes titles to appear in wrong places when CSS columns reflow
+                    // preventOrphanedHeadings(); // Prevent headings from being orphaned at bottom of columns
                     preventOrphanedImageCaptions(); // Prevent image captions from being orphaned
                     markFootnotesSections(); // Mark footnotes sections for spacing
                     
+                    // DISABLED: preventOrphanedHeadings() causes titles to appear in wrong places when CSS columns reflow
                     // Retry orphaned heading detection after a short delay to catch any that were missed
                     setTimeout(() => {
-                        preventOrphanedHeadings();
+                        // preventOrphanedHeadings();
                         addPageNumbers(); // Add page numbers to pages 2+
                     }, 100);
                 } catch (e) {
@@ -1597,10 +1608,24 @@ function trimArticle1ToFit() {
         const descStyle = getComputedStyle(description);
         usedHeight += description.offsetHeight + parseFloat(descStyle.marginTop) + parseFloat(descStyle.marginBottom);
     }
+    // Always reserve space for "Continued on Page 2" text
+    // CSS: font-size: 0.7em, margin-top: 6px
+    // Base font for article-content-right is 0.9em (typically ~14-15px), so 0.7em = ~10-11px
+    // With line-height ~1.4-1.5, text height = ~14-16px
+    // Plus 6px margin-top = ~20-22px total
+    // Be very conservative: use 45px to ensure it's never cut off
+    let continuedHeight = 45;
     if (continued) {
+        // If element exists, measure it and add extra padding for safety
         const contStyle = getComputedStyle(continued);
-        usedHeight += continued.offsetHeight + parseFloat(contStyle.marginTop) + parseFloat(contStyle.marginBottom);
+        const actualHeight = continued.offsetHeight + parseFloat(contStyle.marginTop) + parseFloat(contStyle.marginBottom);
+        // Use the larger of actual height + 15px padding, or our conservative estimate
+        continuedHeight = Math.max(actualHeight + 15, 45);
+        console.log('trimArticle1ToFit: continued element height:', actualHeight, 'reserved:', continuedHeight);
+    } else {
+        console.log('trimArticle1ToFit: continued element not found, reserving 45px');
     }
+    usedHeight += continuedHeight;
     
     const availableHeight = maxContentHeight - usedHeight - 30; // 30px safety margin to prevent cutoff
     
@@ -2166,7 +2191,7 @@ function splitPagesDynamically() {
             console.log('Found', elements.length, 'elements to split');
             if (elements.length === 0) continue;
             
-            // Create pages by grouping elements, measuring as we go
+            // Split pages element by element - allows articles to span multiple pages
             let currentPage = page;
             let currentContentDiv = contentDiv;
             let currentPageContent = '';
@@ -2175,9 +2200,8 @@ function splitPagesDynamically() {
             for (let i = 0; i < elements.length; i++) {
                 const element = elements[i];
                 const elementHTML = element.outerHTML;
-                const isLastElement = i === elements.length - 1;
                 
-                // Test if adding this element would cause overflow
+                // Normal element processing: Test if adding this element would cause overflow
                 const testContent = currentPageContent + elementHTML;
                 
                 // Create a temporary div to measure height
@@ -2207,7 +2231,6 @@ function splitPagesDynamically() {
                 // If adding this element causes overflow, create a new page
                 // Always create a new page if content exceeds maxHeight (even slightly)
                 // This ensures content flows to next page instead of being clipped
-                // Include last element in this check to ensure it gets its own page if needed
                 if (testHeight > maxHeight) {
                     // If current page already has content, finalize it and create new page
                     if (currentPageContent.trim() !== '') {
@@ -2991,7 +3014,7 @@ function markFootnotesSections() {
                 const sequentialNum = globalFootnoteCounter.toString();
                 footnoteContent.push({
                     element: li,
-                    text: numMatch ? numMatch[2].trim() : text.replace(/^\d+\.?\s*/, '').trim(),
+                    text: numMatch ? numMatch[2].trim() : text.trim(),
                     number: sequentialNum
                 });
             });
@@ -3044,7 +3067,7 @@ function markFootnotesSections() {
                     } else {
                         // Create new list item from paragraph
                         li = document.createElement('li');
-                        footnoteText = item.text.replace(/^\d+\.?\s*/, '').trim();
+                        footnoteText = item.text.trim();
                     }
                     
                     // Normalize text and set format - CRITICAL: ensure single line, no breaks
@@ -3202,7 +3225,7 @@ function markFootnotesSections() {
                     if (dataNumber) {
                         // Use the number from data attribute - this is the correct sequential number!
                         footnoteNum = dataNumber;
-                        footnoteText = textContent.replace(/^\d+\.?\s*/, '').trim();
+                        footnoteText = textContent.trim();
                         console.log('Using number from data attribute:', footnoteNum);
                     } else {
                         // Try to get from id
@@ -3210,12 +3233,12 @@ function markFootnotesSections() {
                         const idMatch = id.match(/(\d+)/);
                         if (idMatch) {
                             footnoteNum = idMatch[1];
-                            footnoteText = textContent.replace(/^\d+\.?\s*/, '').trim();
+                            footnoteText = textContent.trim();
                         } else {
                             // Last resort: use index (but this shouldn't happen if numbering worked)
                             console.warn('Could not find footnote number, using index:', index + 1, 'textContent:', textContent.substring(0, 50));
                             footnoteNum = (index + 1).toString();
-                            footnoteText = textContent.replace(/^\d+\.?\s*/, '').trim();
+                            footnoteText = textContent.trim();
                         }
                     }
                 }
@@ -3407,229 +3430,8 @@ function markFootnotesSections() {
             }
         });
         
-        // Only convert standalone numbers that match actual footnote numbers
-        // Process text nodes to find numbers that match actual footnotes
-        const walker = document.createTreeWalker(
-            contentDiv,
-            NodeFilter.SHOW_TEXT,
-            {
-                acceptNode: function(node) {
-                    // Skip if already in a sup tag (unless it's not marked as footnote-ref)
-                    if (node.parentElement && node.parentElement.tagName === 'SUP') {
-                        // If it's already a superscript but not marked as footnote-ref, we might need to check it
-                        if (node.parentElement.classList.contains('footnote-ref')) {
-                            return NodeFilter.FILTER_REJECT;
-                        }
-                    }
-                    // Skip if inside footnote sections, lists, headings, or image captions
-                    const parent = node.parentElement;
-                    if (parent) {
-                        // CRITICAL: Skip if inside the footnotes section itself (not just article content with footnote links)
-                        const isInFootnotesSection = parent.closest('.footnotes-section, .footnotes-list') !== null ||
-                                                     (parent.closest('[class*="footnote"], [id*="footnote"]') !== null &&
-                                                      parent.closest('li, ol, ul') !== null);
-                        
-                        if (isInFootnotesSection ||
-                            parent.closest('li, ol, ul') !== null ||
-                            parent.closest('h1, h2, h3, h4, h5, h6') !== null ||
-                            parent.classList.contains('image-caption')) {
-                            return NodeFilter.FILTER_REJECT;
-                        }
-                    }
-                    return NodeFilter.FILTER_ACCEPT;
-                }
-            },
-            false
-        );
-        
-        const textNodesToProcess = [];
-        let node;
-        while (node = walker.nextNode()) {
-            const text = node.textContent || '';
-            // Look for various footnote patterns:
-            // - "word4" or "word 4" (word followed by number)
-            // - "(1)", "(2)" (number in parentheses)
-            // - ".1", ",1", ";1" (number after punctuation)
-            // - "word.1" or "word,1" (word, punctuation, number)
-            // - Any 1-2 digit number that could be a footnote
-            if (/\w[\s]?\d{1,2}(?![.\d\w])|\(\d{1,2}\)|[.,;:]\d{1,2}(?![.\d\w])|\w[.,;:]\d{1,2}(?![.\d\w])/.test(text)) {
-                textNodesToProcess.push(node);
-            }
-        }
-        
-        // Process text nodes to convert only actual footnote numbers to superscript
-        textNodesToProcess.forEach(textNode => {
-            const text = textNode.textContent;
-            const matches = [];
-            
-            // Pattern 1: word character(s), optional space, 1-2 digits (not followed by .digit, digit, or word)
-            // Example: "word4" or "word 4"
-            let pattern = /([a-zA-Z]+)([\s]?)(\d{1,2})(?![.\d\w])/g;
-            let match;
-            while ((match = pattern.exec(text)) !== null) {
-                const numValue = parseInt(match[3], 10);
-                if (allActualFootnoteNumbers.has(numValue)) {
-                    matches.push({
-                        index: match.index,
-                        before: match[1] + match[2],
-                        number: match[3],
-                        endIndex: pattern.lastIndex,
-                        type: 'word'
-                    });
-                }
-            }
-            
-            // Pattern 2: number in parentheses (1), (2), etc.
-            // Example: "text(1)more text"
-            pattern = /\((\d{1,2})\)/g;
-            while ((match = pattern.exec(text)) !== null) {
-                const numValue = parseInt(match[1], 10);
-                if (allActualFootnoteNumbers.has(numValue)) {
-                    matches.push({
-                        index: match.index,
-                        before: '(',
-                        number: match[1],
-                        endIndex: pattern.lastIndex,
-                        type: 'paren',
-                        after: ')'
-                    });
-                }
-            }
-            
-            // Pattern 3: number after punctuation .1, ,1, ;1, :1
-            // Example: "sentence.1more" or "sentence,1more" or "Babel.2"
-            // This matches punctuation followed immediately by a number
-            pattern = /([.,;:])(\d{1,2})(?![.\d\w])/g;
-            while ((match = pattern.exec(text)) !== null) {
-                const numValue = parseInt(match[2], 10);
-                if (allActualFootnoteNumbers.has(numValue)) {
-                    matches.push({
-                        index: match.index,
-                        before: match[1],
-                        number: match[2],
-                        endIndex: pattern.lastIndex,
-                        type: 'punctuation'
-                    });
-                }
-            }
-            
-            // Pattern 4: word followed by punctuation and number (e.g., "Babel.2", "word,3")
-            // This catches cases where there's a word, then punctuation, then a footnote number
-            pattern = /([a-zA-Z]+)([.,;:])(\d{1,2})(?![.\d\w])/g;
-            while ((match = pattern.exec(text)) !== null) {
-                const numValue = parseInt(match[3], 10);
-                if (allActualFootnoteNumbers.has(numValue)) {
-                    // Check if this match overlaps with a previous match (from pattern 3)
-                    const overlaps = matches.some(m => 
-                        m.index <= match.index && m.endIndex >= match.index
-                    );
-                    if (!overlaps) {
-                        matches.push({
-                            index: match.index + match[1].length, // Start after the word
-                            before: match[2], // The punctuation
-                            number: match[3],
-                            endIndex: pattern.lastIndex,
-                            type: 'word-punctuation'
-                        });
-                    }
-                }
-            }
-            
-            // Pattern 5: Standalone numbers on their own line or after whitespace/newlines
-            // Example: "text\n4\nmore text" or "text 4 more text" where 4 is a footnote
-            // This catches numbers that appear after sentence endings, on new lines, etc.
-            // Match: start of text OR whitespace/newline, then number, then whitespace/newline OR end
-            pattern = /(?:^|[\s\n]+)(\d{1,2})(?:[\s\n]+|$)/g;
-            while ((match = pattern.exec(text)) !== null) {
-                const numValue = parseInt(match[1], 10);
-                if (allActualFootnoteNumbers.has(numValue)) {
-                    // Check if this number is actually a footnote (not part of a date, etc.)
-                    // Look at context - if it's after punctuation or on its own line, it's likely a footnote
-                    const beforeText = match.index > 0 ? text.substring(Math.max(0, match.index - 20), match.index) : '';
-                    const afterText = match.index + match[0].length < text.length ? 
-                                     text.substring(match.index + match[0].length, Math.min(text.length, match.index + match[0].length + 20)) : '';
-                    
-                    // It's likely a footnote if:
-                    // - It's at the start of the text node (after whitespace/newline)
-                    // - It's after punctuation (. , ; : ! ?)
-                    // - It's followed by whitespace/newline or end of text
-                    // - It's on its own line (surrounded by newlines)
-                    const isAfterPunctuation = /[.,;:!?]\s*$/.test(beforeText);
-                    const isAtStart = match.index === 0 || /^[\s\n]*$/.test(text.substring(0, match.index));
-                    const isFollowedByWhitespace = /^[\s\n]*/.test(afterText) || afterText === '';
-                    
-                    // Check if the number is on its own line (surrounded by newlines or at start/end)
-                    const charBefore = match.index > 0 ? text[match.index - 1] : '\n';
-                    const charAfter = match.index + match[0].length < text.length ? text[match.index + match[0].length] : '\n';
-                    const isOnOwnLine = (charBefore === '\n' || match.index === 0) &&
-                                       (charAfter === '\n' || match.index + match[0].length >= text.length);
-                    
-                    // Be more aggressive: if it's a valid footnote number and appears standalone, convert it
-                    if ((isAfterPunctuation || isAtStart || isOnOwnLine) && isFollowedByWhitespace) {
-                        // Check if it overlaps with a previous match
-                        const overlaps = matches.some(m => 
-                            m.index <= match.index && m.endIndex >= match.index
-                        );
-                        if (!overlaps) {
-                            // Extract just the whitespace before the number
-                            const whitespaceBefore = match[0].substring(0, match[0].indexOf(match[1]));
-                            matches.push({
-                                index: match.index,
-                                before: whitespaceBefore,
-                                number: match[1],
-                                endIndex: match.index + match[0].length,
-                                type: 'standalone'
-                            });
-                        }
-                    }
-                }
-            }
-            
-            // Sort matches by index (reverse order to process from end to start)
-            matches.sort((a, b) => b.index - a.index);
-            
-            if (matches.length > 0) {
-                // Build replacement fragments (process from start to end, but build fragments)
-                const fragments = [];
-                let lastIndex = 0;
-                
-                // Sort back to start-to-end order for building fragments
-                matches.sort((a, b) => a.index - b.index);
-                
-                matches.forEach(m => {
-                    // Add text before the match
-                    if (m.index > lastIndex) {
-                        fragments.push(document.createTextNode(text.substring(lastIndex, m.index)));
-                    }
-                    
-                    // Add the text before the number
-                    if (m.before) {
-                        fragments.push(document.createTextNode(m.before));
-                    }
-                    
-                    // Create superscript element for the number
-                    const sup = document.createElement('sup');
-                    sup.className = 'footnote-ref';
-                    sup.textContent = m.number;
-                    fragments.push(sup);
-                    
-                    // Skip the closing paren if it's a paren type (already included in endIndex)
-                    lastIndex = m.endIndex;
-                });
-                
-                // Add remaining text
-                if (lastIndex < text.length) {
-                    fragments.push(document.createTextNode(text.substring(lastIndex)));
-                }
-                
-                // Replace the text node with fragments
-                const parent = textNode.parentNode;
-                fragments.forEach(fragment => {
-                    parent.insertBefore(fragment, textNode);
-                });
-                textNode.remove();
-            }
-        });
+        // REMOVED: Text node processing that incorrectly converted numbers to footnotes
+        // Only elements with class="footnote-anchor" or class="footnote-reference" should be treated as footnotes
         }); // End contentDivs.forEach
     } // End for loop
 }
