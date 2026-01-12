@@ -2490,25 +2490,29 @@ header ~ p a {
         max-height: calc(11in - 0.5in) !important; /* Same as desktop - JavaScript uses this for calculations */
     }
     
-    /* CRITICAL: Ensure Article 1 (.article-content-right) and Articles 2 & 3 (.article-snippet) have the same font-size on mobile */
-    /* Override base rules (font-size: 0.85em) with absolute pixel value to ensure exact match */
-    .front-page .article-content-right,
-    .front-page .article-snippet,
-    #newsletter-container .front-page .article-content-right,
-    #newsletter-container .front-page .article-snippet,
-    .newsletter-page:first-child .article-content-right,
-    .newsletter-page:first-child .article-snippet {
-        font-size: 13.6px !important; /* 0.85em of 16px base = 13.6px - absolute value to ensure exact match */
+    /* CRITICAL: Ensure Article 1 (.article-content-right) scales down exactly like Articles 2 & 3 (.article-snippet) on mobile */
+    /* Use the same relative font-size (0.85em) so they scale proportionally with the transform: scale(0.4) */
+    /* Make sure article-content-right uses exactly the same font-size as article-snippet */
+    .front-page .article-col-right .article-content-right,
+    .front-page .article-col-left .article-snippet {
+        font-size: 0.85em !important; /* Use relative em so it scales with transform: scale(0.4) */
+        line-height: 1.5 !important;
+    }
+    
+    /* Also target with additional specificity */
+    #newsletter-container .front-page .article-col-right .article-content-right,
+    #newsletter-container .front-page .article-col-left .article-snippet,
+    .newsletter-page:first-child .article-col-right .article-content-right,
+    .newsletter-page:first-child .article-col-left .article-snippet {
+        font-size: 0.85em !important;
         line-height: 1.5 !important;
     }
     
     /* Ensure paragraphs inside inherit the same size */
-    .front-page .article-content-right p,
-    .front-page .article-snippet p,
-    #newsletter-container .front-page .article-content-right p,
-    #newsletter-container .front-page .article-snippet p,
-    .newsletter-page:first-child .article-content-right p,
-    .newsletter-page:first-child .article-snippet p {
+    .front-page .article-col-right .article-content-right p,
+    .front-page .article-col-left .article-snippet p,
+    #newsletter-container .front-page .article-col-right .article-content-right p,
+    #newsletter-container .front-page .article-col-left .article-snippet p {
         font-size: inherit !important;
         line-height: inherit !important;
     }
