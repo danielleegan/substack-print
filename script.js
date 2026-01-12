@@ -1048,7 +1048,7 @@ function generateNewsletter(publication, articles) {
                         ${imageHTML}
                         <h2 class="article-title">${article1.title}</h2>
                         <div class="article-title-bar-front"></div>
-                        <div class="article-snippet">${article1ContentPage1}</div>
+                        <div class="article-content-right">${article1ContentPage1}</div>
                         ${article1ContentPage1.trim().length > 0 ? '<div class="article-continued">Continued on Page 2</div>' : ''}
                     </div>
                 </div>
@@ -1552,9 +1552,9 @@ function trimArticle1ToFit() {
         return;
     }
     
-    const article1Content = firstPage.querySelector('.article-col-right .article-snippet');
+    const article1Content = firstPage.querySelector('.article-col-right .article-content-right');
     if (!article1Content) {
-        console.log('trimArticle1ToFit: No article-snippet found in article-col-right');
+        console.log('trimArticle1ToFit: No article-content-right found in article-col-right');
         return;
     }
     
