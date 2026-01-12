@@ -2492,9 +2492,19 @@ header ~ p a {
     
     /* CRITICAL: Ensure article-snippet in article-col-right matches article-col-left exactly on mobile */
     /* Article 1 now uses article-snippet class, same as articles 2 & 3 */
+    /* First, ensure parent containers have the same base font-size */
+    .front-page .article-col-right,
+    .front-page .article-col-left {
+        font-size: 16px !important; /* Explicit base font-size to ensure consistent em calculation */
+    }
+    
     /* Use absolute font-size (13.6px = 0.85em of 16px base) to ensure exact match regardless of parent */
     .front-page .article-col-right .article-snippet,
+    .front-page .article-col-left .article-snippet,
     #newsletter-container .front-page .article-col-right .article-snippet,
+    #newsletter-container .front-page .article-col-left .article-snippet,
+    .newsletter-page:first-child .article-col-right .article-snippet,
+    .newsletter-page:first-child .article-col-left .article-snippet,
     .article-col-right .article-snippet,
     .article-col-left .article-snippet,
     .article-snippet {
