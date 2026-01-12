@@ -2490,8 +2490,23 @@ header ~ p a {
         max-height: calc(11in - 0.5in) !important; /* Same as desktop - JavaScript uses this for calculations */
     }
     
-    /* On mobile, let desktop styles handle article-content-right - JavaScript trimming works the same */
-    /* No mobile-specific overrides needed - desktop CSS applies and JavaScript trimming handles sizing */
+    /* Explicitly match desktop font-size and line-height on mobile to ensure JavaScript trimming works correctly */
+    .front-page .newsletter-content .article-featured .article-col-right .article-content-right,
+    #newsletter-container .front-page .article-content-right,
+    .front-page .article-content-right {
+        font-size: 0.85em !important; /* Match desktop exactly */
+        line-height: 1.5 !important; /* Match desktop exactly */
+        overflow: hidden !important; /* Same as desktop */
+    }
+    
+    /* Ensure paragraphs also match desktop */
+    .front-page .article-content-right p,
+    #newsletter-container .front-page .article-content-right p {
+        font-size: inherit !important; /* Inherit from parent (0.85em) */
+        line-height: inherit !important; /* Inherit from parent (1.5) */
+        margin-bottom: 0 !important; /* Same as desktop */
+        text-align: justify !important; /* Same as desktop */
+    }
     
     /* Show mobile-only elements */
     .mobile-only {
