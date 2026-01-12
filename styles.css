@@ -2491,19 +2491,28 @@ header ~ p a {
     }
     
     /* CRITICAL: Ensure Article 1 (.article-content-right) scales down exactly like Articles 2 & 3 (.article-snippet) on mobile */
-    /* Use the same relative font-size (0.85em) so they scale proportionally with the transform: scale(0.4) */
-    /* Make sure article-content-right uses exactly the same font-size as article-snippet */
+    /* First, ensure parent containers have the same base font-size so 0.85em computes the same */
+    .front-page .article-col-right,
+    .front-page .article-col-left {
+        font-size: 1em !important; /* Explicit base font-size to ensure 0.85em computes the same */
+    }
+    
+    /* Then ensure both article-content-right and article-snippet use the same relative font-size */
+    /* This ensures they scale proportionally with transform: scale(0.4) */
     .front-page .article-col-right .article-content-right,
-    .front-page .article-col-left .article-snippet {
+    .front-page .article-col-left .article-snippet,
+    .front-page .article-col-left .article-section .article-snippet {
         font-size: 0.85em !important; /* Use relative em so it scales with transform: scale(0.4) */
         line-height: 1.5 !important;
     }
     
-    /* Also target with additional specificity */
+    /* Also target with additional specificity for all possible selectors */
     #newsletter-container .front-page .article-col-right .article-content-right,
     #newsletter-container .front-page .article-col-left .article-snippet,
+    #newsletter-container .front-page .article-col-left .article-section .article-snippet,
     .newsletter-page:first-child .article-col-right .article-content-right,
-    .newsletter-page:first-child .article-col-left .article-snippet {
+    .newsletter-page:first-child .article-col-left .article-snippet,
+    .newsletter-page:first-child .article-col-left .article-section .article-snippet {
         font-size: 0.85em !important;
         line-height: 1.5 !important;
     }
@@ -2511,8 +2520,10 @@ header ~ p a {
     /* Ensure paragraphs inside inherit the same size */
     .front-page .article-col-right .article-content-right p,
     .front-page .article-col-left .article-snippet p,
+    .front-page .article-col-left .article-section .article-snippet p,
     #newsletter-container .front-page .article-col-right .article-content-right p,
-    #newsletter-container .front-page .article-col-left .article-snippet p {
+    #newsletter-container .front-page .article-col-left .article-snippet p,
+    #newsletter-container .front-page .article-col-left .article-section .article-snippet p {
         font-size: inherit !important;
         line-height: inherit !important;
     }
