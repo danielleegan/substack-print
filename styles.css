@@ -2491,30 +2491,22 @@ header ~ p a {
     }
     
     /* CRITICAL: Ensure ALL article-snippet elements on front page have the same font-size on mobile */
-    /* Article 1: .article-col-right > .article-snippet */
-    /* Articles 2 & 3: .article-col-left > .article-section > .article-snippet */
-    /* Target all possible paths to ensure font-size is set */
-    .front-page .article-snippet,
-    .front-page .article-col-right .article-snippet,
-    .front-page .article-col-left .article-snippet,
-    .front-page .article-col-left .article-section .article-snippet,
-    #newsletter-container .front-page .article-snippet,
-    #newsletter-container .front-page .article-col-right .article-snippet,
-    #newsletter-container .front-page .article-col-left .article-snippet,
-    #newsletter-container .front-page .article-col-left .article-section .article-snippet,
+    /* Override base .article-snippet rule (font-size: 0.85em) with absolute pixel value */
+    /* Use maximum specificity to ensure it applies */
     .newsletter-page:first-child .article-snippet,
-    .newsletter-page:first-child .article-col-right .article-snippet,
-    .newsletter-page:first-child .article-col-left .article-snippet,
-    .newsletter-page:first-child .article-col-left .article-section .article-snippet {
+    .newsletter-page.front-page .article-snippet,
+    .front-page .article-snippet,
+    #newsletter-container .newsletter-page:first-child .article-snippet,
+    #newsletter-container .front-page .article-snippet {
         font-size: 13.6px !important; /* 0.85em of 16px base = 13.6px - absolute value to ensure exact match */
         line-height: 1.5 !important;
     }
     
     /* Ensure paragraphs inside inherit the same size */
+    .newsletter-page:first-child .article-snippet p,
     .front-page .article-snippet p,
-    .front-page .article-col-right .article-snippet p,
-    .front-page .article-col-left .article-snippet p,
-    .front-page .article-col-left .article-section .article-snippet p {
+    #newsletter-container .newsletter-page:first-child .article-snippet p,
+    #newsletter-container .front-page .article-snippet p {
         font-size: inherit !important;
         line-height: inherit !important;
     }
