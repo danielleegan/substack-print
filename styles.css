@@ -2490,17 +2490,24 @@ header ~ p a {
         max-height: calc(11in - 0.5in) !important; /* Same as desktop - JavaScript uses this for calculations */
     }
     
-    /* Make article-content-right match article-snippet exactly on mobile */
-    /* Both should use font-size: 0.85em and line-height: 1.5 - ensure they're identical */
-    .article-content-right,
+    /* CRITICAL: Ensure article-snippet in article-col-right matches article-col-left exactly on mobile */
+    /* Article 1 now uses article-snippet class, same as articles 2 & 3 */
+    /* Use absolute font-size (13.6px = 0.85em of 16px base) to ensure exact match regardless of parent */
+    .front-page .article-col-right .article-snippet,
+    #newsletter-container .front-page .article-col-right .article-snippet,
+    .article-col-right .article-snippet,
+    .article-col-left .article-snippet,
     .article-snippet {
-        font-size: 0.85em !important;
+        font-size: 13.6px !important; /* 0.85em of 16px base = 13.6px */
         line-height: 1.5 !important;
     }
     
-    /* Override any parent container line-height that might affect article-content-right */
-    .article-col-right .article-content-right {
-        line-height: 1.5 !important; /* Override .article-col-right > *:first-child line-height: 1 */
+    /* Ensure paragraphs inside also match */
+    .article-col-right .article-snippet p,
+    .article-col-left .article-snippet p,
+    .article-snippet p {
+        font-size: inherit !important;
+        line-height: inherit !important;
     }
     
     /* Show mobile-only elements */
