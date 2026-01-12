@@ -349,7 +349,7 @@ header ~ p a {
     width: 8.5in;
     min-height: 11in;
     padding: 0.25in;
-    background: #FFFCF3;
+    background: white;
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -2395,15 +2395,57 @@ header ~ p a {
         width: 8.5in;
     }
     
-    #newsletter-container .front-page,
     #newsletter-container .body-pages,
-    #newsletter-container .newsletter-page {
+    #newsletter-container .newsletter-page:not(:first-child) {
         width: 8.5in;
         min-height: 11in;
         margin-left: 0;
         margin-right: auto;
         margin-bottom: calc(-11in * (1 - 0.4) + 8px);
         overflow: visible !important; /* Allow content to overflow on mobile when scaled */
+    }
+    
+    /* Front page on mobile - fixed height with overflow hidden */
+    #newsletter-container .front-page,
+    #newsletter-container .newsletter-page:first-child {
+        width: 8.5in;
+        height: 11in !important; /* Fixed height, not min-height */
+        min-height: 11in !important;
+        margin-left: 0;
+        margin-right: auto;
+        margin-bottom: calc(-11in * (1 - 0.4) + 8px);
+        overflow: hidden !important; /* Prevent content from extending beyond page */
+    }
+    
+    /* White background for front page on mobile - only in normal mode */
+    #newsletter-container .front-page:not(.mode-evil):not(.mode-chris-best):not(.mode-chris-worst),
+    #newsletter-container .newsletter-page:first-child:not(.mode-evil):not(.mode-chris-best):not(.mode-chris-worst) {
+        background: white !important;
+    }
+    
+    /* Ensure mode backgrounds work on mobile front page */
+    #newsletter-container .front-page.mode-evil,
+    #newsletter-container .newsletter-page:first-child.mode-evil {
+        background-image: url('./backgrounds/test-background.jpg') !important;
+        background-size: cover !important;
+        background-position: center !important;
+        background-repeat: no-repeat !important;
+    }
+    
+    #newsletter-container .front-page.mode-chris-best,
+    #newsletter-container .newsletter-page:first-child.mode-chris-best {
+        background-image: url('./backgrounds/chris-best.jpg') !important;
+        background-size: cover !important;
+        background-position: center !important;
+        background-repeat: no-repeat !important;
+    }
+    
+    #newsletter-container .front-page.mode-chris-worst,
+    #newsletter-container .newsletter-page:first-child.mode-chris-worst {
+        background-image: url('./backgrounds/chris-worst.jpg') !important;
+        background-size: cover !important;
+        background-position: center !important;
+        background-repeat: no-repeat !important;
     }
     
     #newsletter-container .body-pages:last-child,
@@ -2431,8 +2473,12 @@ header ~ p a {
     }
     
     /* Ensure first newsletter page is visible on mobile */
-    #newsletter-container .newsletter-page:first-child {
+    #newsletter-container .newsletter-page:first-child,
+    #newsletter-container .front-page {
         display: flex !important;
+        height: 11in !important; /* Fixed height on mobile, not min-height */
+        min-height: 11in !important;
+        overflow: hidden !important; /* Prevent content from extending beyond page */
     }
     
     /* Fix content cutoff on mobile - maintain same structure as desktop */
@@ -2582,6 +2628,20 @@ header ~ p a {
         margin-right: auto !important;
         overflow: hidden !important;
         display: flex !important; /* Ensure all pages are visible on desktop */
+    }
+    
+    /* Explicitly ensure all newsletter pages beyond page 1 are visible on desktop */
+    #newsletter-container .newsletter-page:not(:first-child),
+    #newsletter-container .newsletter-page:nth-child(2),
+    #newsletter-container .newsletter-page:nth-child(n+2) {
+        display: flex !important; /* Override any mobile hiding rules */
+    }
+    
+    /* Ensure body-pages are visible on desktop */
+    #newsletter-container .body-pages,
+    #newsletter .body-pages,
+    .newsletter .body-pages {
+        display: flex !important; /* Override any mobile hiding rules */
     }
     
     #newsletter-container .body-pages:last-child {

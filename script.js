@@ -871,7 +871,7 @@ function generateNewsletter(publication, articles) {
     }
     
     let html = `
-        <div class="newsletter-page${modeClass}">
+        <div class="newsletter-page front-page${modeClass}">
             <div class="newsletter-masthead">
                 <div class="masthead-top-url"><img src="logo.png" alt="Substack Print Logo"></div>
                 <div class="masthead-title">${publication.title || 'SUBSCRIPTION'}</div>
