@@ -2490,10 +2490,8 @@ header ~ p a {
         max-height: calc(11in - 0.5in) !important; /* Same as desktop - JavaScript uses this for calculations */
     }
     
-    /* Make article-content-right match article-snippet exactly on mobile */
-    .front-page .newsletter-content .article-featured .article-col-right .article-content-right,
-    #newsletter-container .front-page .article-content-right,
-    .front-page .article-content-right {
+    /* Make article-content-right match article-snippet exactly on mobile - use same base rule */
+    .article-content-right {
         font-size: 0.85em !important; /* Match article-snippet exactly */
         line-height: 1.5 !important; /* Match article-snippet exactly */
     }
