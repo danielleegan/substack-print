@@ -2414,8 +2414,9 @@ header ~ p a {
         margin-left: 0;
         margin-right: auto;
         margin-bottom: calc(-11in * (1 - 0.4) + 8px);
-        overflow: hidden !important; /* Prevent content from extending beyond page */
+        overflow: hidden !important; /* Prevent content from extending beyond page boundary */
     }
+    
     
     /* White background for front page on mobile - only in normal mode */
     #newsletter-container .front-page:not(.mode-evil):not(.mode-chris-best):not(.mode-chris-worst),
@@ -2489,14 +2490,13 @@ header ~ p a {
         max-height: calc(11in - 0.5in) !important; /* Keep structure */
     }
     
-    /* Ensure article-content-right matches article-snippet exactly on mobile */
+    /* Ensure article-content-right matches desktop exactly on mobile - JavaScript trimming handles content */
     .front-page .newsletter-content .article-featured .article-col-right .article-content-right,
     #newsletter-container .front-page .article-content-right,
     .front-page .article-content-right {
-        overflow: hidden !important; /* Same as articles 2 & 3 */
-        font-size: 0.85em !important; /* Match article-snippet font size */
-        line-height: 1.5 !important; /* Match article-snippet line-height */
-        max-width: 100% !important; /* Ensure it doesn't overflow */
+        overflow: hidden !important; /* Same as desktop - clip content that doesn't fit */
+        /* Don't override font-size or line-height - use desktop values so JavaScript calculations match */
+        max-width: 100% !important;
         box-sizing: border-box !important;
     }
     
@@ -2511,8 +2511,8 @@ header ~ p a {
     
     /* Also target direct selectors for extra specificity */
     #newsletter-container .front-page .newsletter-content {
-        overflow: hidden !important; /* Keep same as desktop */
-        max-height: calc(11in - 0.5in) !important; /* Keep structure */
+        overflow: hidden !important; /* Same as desktop - clip content that doesn't fit */
+        max-height: calc(11in - 0.5in) !important; /* Same as desktop - JavaScript trimming uses this */
     }
     
     /* Show mobile-only elements */
