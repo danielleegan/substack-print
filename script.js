@@ -1048,7 +1048,7 @@ function generateNewsletter(publication, articles) {
                         ${imageHTML}
                         <h2 class="article-title">${article1.title}</h2>
                         <div class="article-title-bar-front"></div>
-                        <div class="article-content-right">${article1ContentPage1}</div>
+                        <div class="article-snippet">${article1ContentPage1}</div>
                         ${article1ContentPage1.trim().length > 0 ? '<div class="article-continued">Continued on Page 2</div>' : ''}
                     </div>
                 </div>
@@ -1552,9 +1552,9 @@ function trimArticle1ToFit() {
         return;
     }
     
-    const article1Content = firstPage.querySelector('.article-content-right');
+    const article1Content = firstPage.querySelector('.article-col-right .article-snippet');
     if (!article1Content) {
-        console.log('trimArticle1ToFit: No article-content-right found');
+        console.log('trimArticle1ToFit: No article-snippet found in article-col-right');
         return;
     }
     
@@ -1610,9 +1610,9 @@ function trimArticle1ToFit() {
     }
     // Always reserve space for "Continued on Page 2" text
     // CSS: font-size: 0.7em, margin-top: 6px
-    // Base font for article-content-right is 0.9em (typically ~14-15px), so 0.7em = ~10-11px
-    // With line-height ~1.4-1.5, text height = ~14-16px
-    // Plus 6px margin-top = ~20-22px total
+    // Base font for article-snippet is 0.85em (typically ~13-14px), so 0.7em = ~9-10px
+    // With line-height ~1.4-1.5, text height = ~13-15px
+    // Plus 6px margin-top = ~19-21px total
     // Be very conservative: use 45px to ensure it's never cut off
     let continuedHeight = 45;
     if (continued) {
@@ -1651,7 +1651,7 @@ function trimArticle1ToFit() {
         
         // Create a temporary container to measure height with same styles
         const tempContainer = document.createElement('div');
-        tempContainer.className = 'article-content-right';
+        tempContainer.className = 'article-snippet';
         tempContainer.style.position = 'absolute';
         tempContainer.style.visibility = 'hidden';
         tempContainer.style.width = article1Content.offsetWidth + 'px';
