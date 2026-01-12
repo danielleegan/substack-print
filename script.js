@@ -2538,7 +2538,8 @@ function markFootnotesSections() {
         const contentDivs = [
             page.querySelector('.article-columns-three-css'),
             page.querySelector('.article-content'),
-            page.querySelector('.article-content-right')
+            page.querySelector('.article-content-right'),
+            page.querySelector('.article-snippet')
         ].filter(div => div !== null);
         
         contentDivs.forEach(contentDiv => {
@@ -2702,7 +2703,8 @@ function markFootnotesSections() {
         const contentDivs = [
             page.querySelector('.article-columns-three-css'),
             page.querySelector('.article-content'),
-            page.querySelector('.article-content-right')
+            page.querySelector('.article-content-right'),
+            page.querySelector('.article-snippet')
         ].filter(div => div !== null);
         
         contentDivs.forEach(contentDiv => {
@@ -3384,14 +3386,16 @@ function markFootnotesSections() {
             }
         });
         
-        console.log(`Found ${footnoteRefData.length} footnote references to process in contentDiv`);
+        const contentDivClass = contentDiv.className || 'unknown';
+        console.log(`Found ${footnoteRefData.length} footnote references to process in contentDiv (${contentDivClass})`);
         console.log('Footnote numbers:', footnoteRefData.map(d => d.num));
         if (footnoteRefData.length > 0) {
             console.log('Sample elements:', footnoteRefData.slice(0, 3).map(d => ({
                 tag: d.element.tagName,
                 dataRef: d.element.getAttribute('data-footnote-ref'),
                 text: d.element.textContent?.substring(0, 20),
-                num: d.num
+                num: d.num,
+                className: d.element.className
             })));
         }
         
@@ -3418,7 +3422,9 @@ function markFootnotesSections() {
                     parent.appendChild(sup);
                 }
                 parent.removeChild(element);
+                console.log(`Converted footnote ${num} to superscript in ${contentDivClass}`);
             } else {
+                console.log(`Footnote ${num} not in allActualFootnoteNumbers (has: ${Array.from(allActualFootnoteNumbers).join(', ')})`);
                 // Doesn't match an actual footnote, but still remove any link and keep as text
                 const textNode = document.createTextNode(num.toString());
                 if (nextSibling && nextSibling.parentNode === parent) {

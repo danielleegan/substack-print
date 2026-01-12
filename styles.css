@@ -1246,13 +1246,23 @@ header ~ p a {
 .article-columns-three-css a[href*="#fn"],
 .article-columns-three-css a[href*="#footnote"],
 .article-columns-three-css sup a,
+.article-snippet a[href*="#fn"],
+.article-snippet a[href*="#footnote"],
+.article-snippet sup a,
+.article-content-right a[href*="#fn"],
+.article-content-right a[href*="#footnote"],
+.article-content-right sup a,
 /* Style footnote references as superscript in main text */
 .article-columns-three-css .footnote-ref,
 .article-columns-three-css sup.footnote-ref,
 .article-content .footnote-ref,
 .article-content sup.footnote-ref,
 .article-content-right .footnote-ref,
-.article-content-right sup.footnote-ref {
+.article-content-right sup.footnote-ref,
+.article-snippet .footnote-ref,
+.article-snippet sup.footnote-ref,
+.article-snippet span.footnote-reference,
+.article-content-right span.footnote-reference {
     vertical-align: super;
     font-size: 0.7em !important;
     line-height: 1;
@@ -1263,7 +1273,8 @@ header ~ p a {
 /* Also style sup elements as small superscript (for non-footnote superscripts) */
 .article-columns-three-css sup:not(.footnote-ref),
 .article-content sup:not(.footnote-ref),
-.article-content-right sup:not(.footnote-ref) {
+.article-content-right sup:not(.footnote-ref),
+.article-snippet sup:not(.footnote-ref) {
     vertical-align: super;
     font-size: 0.7em !important;
     line-height: 1;
