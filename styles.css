@@ -2491,8 +2491,58 @@ header ~ p a {
     }
     
     /* CRITICAL: Make Article 1 (.article-content-right) match Articles 2 & 3 (.article-snippet) exactly on mobile */
-    /* Remove any mobile-specific font-size rules - let the base rules handle it since Articles 2 & 3 work */
-    /* The base rules already set font-size: 0.85em for both, so they should match if parent font-size is the same */
+    /* Since both compute to 13.6px but Article 1 looks larger, ensure ALL typography properties match */
+    .front-page .article-col-right,
+    .front-page .article-col-left,
+    .front-page .article-col-left .article-section {
+        font-size: 16px !important; /* Explicit base font-size so 0.85em = 13.6px for both */
+    }
+    
+    /* Force both to match exactly - copy ALL properties from article-snippet to article-content-right */
+    .front-page .article-col-right .article-content-right {
+        font-size: 13.6px !important; /* Explicit pixel value to match computed size */
+        line-height: 1.5 !important;
+        font-weight: normal !important;
+        letter-spacing: normal !important;
+        font-family: Georgia, "Times New Roman", serif !important;
+        text-align: justify !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+    }
+    
+    .front-page .article-col-left .article-snippet,
+    .front-page .article-col-left .article-section .article-snippet {
+        font-size: 13.6px !important; /* Explicit pixel value to match computed size */
+        line-height: 1.5 !important;
+        font-weight: normal !important;
+        letter-spacing: normal !important;
+        font-family: Georgia, "Times New Roman", serif !important;
+        text-align: justify !important;
+    }
+    
+    /* Ensure paragraphs match exactly */
+    .front-page .article-col-right .article-content-right p {
+        font-size: inherit !important;
+        line-height: inherit !important;
+        font-weight: inherit !important;
+        letter-spacing: inherit !important;
+        font-family: inherit !important;
+        text-indent: 0.25in !important;
+        margin-bottom: 0 !important;
+        text-align: justify !important;
+    }
+    
+    .front-page .article-col-left .article-snippet p,
+    .front-page .article-col-left .article-section .article-snippet p {
+        font-size: inherit !important;
+        line-height: inherit !important;
+        font-weight: inherit !important;
+        letter-spacing: inherit !important;
+        font-family: inherit !important;
+        text-indent: 0.25in !important;
+        margin-bottom: 0 !important;
+        text-align: justify !important;
+    }
     
     /* Show mobile-only elements */
     .mobile-only {
