@@ -519,6 +519,15 @@ header ~ p a {
     max-width: 8in;
 }
 
+/* Ensure article-columns fills available height on front page */
+.newsletter-content > .article-columns {
+    flex: 1;
+    align-self: stretch;
+    height: 100%;
+    min-height: 100%;
+    align-items: stretch;
+}
+
 .masthead-top-url {
     position: absolute;
     top: 0;
@@ -611,10 +620,12 @@ header ~ p a {
     gap: 0;
     column-gap: 0;
     row-gap: 0;
-    align-items: start;
-    align-content: start;
+    align-items: stretch;
+    align-content: stretch;
     margin-top: 0;
     padding-top: 0;
+    flex: 1;
+    min-height: 8in; /* Ensure minimum height so divider extends full length */
 }
 
 
@@ -633,10 +644,12 @@ header ~ p a {
     margin-top: 0;
     padding-top: 0;
     align-items: stretch;
-    align-content: start;
+    align-content: stretch;
     min-width: 0;
     box-sizing: border-box;
     overflow: hidden;
+    align-self: stretch;
+    min-height: 8in; /* Match parent min-height so border extends full length */
 }
 
 

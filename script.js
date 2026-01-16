@@ -1363,6 +1363,28 @@ async function processSubstackURL(url) {
                 console.error('Error in optimizeLeftColumnContent:', e);
             }
             
+            // Ensure vertical divider extends full height
+            try {
+                const firstPage = document.querySelector('.newsletter-page');
+                if (firstPage) {
+                    const articleColumns = firstPage.querySelector('.article-columns');
+                    const newsletterContent = firstPage.querySelector('.newsletter-content');
+                    if (articleColumns && newsletterContent) {
+                        // Set height to match available space (content area height)
+                        const contentHeight = newsletterContent.offsetHeight;
+                        if (contentHeight > 0) {
+                            articleColumns.style.minHeight = contentHeight + 'px';
+                            const articleColLeft = articleColumns.querySelector('.article-col-left');
+                            if (articleColLeft) {
+                                articleColLeft.style.minHeight = contentHeight + 'px';
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Error setting divider height:', e);
+            }
+            
             // Run splitPagesDynamically after a delay to ensure optimizeLeftColumnContent has finished
             // Use a longer timeout to ensure it runs even if optimizeLeftColumnContent takes time
             setTimeout(() => {
@@ -1370,31 +1392,21 @@ async function processSubstackURL(url) {
                     splitPagesDynamically();
                     applyModeToPages(); // Apply mode after pages are split
                     updatePageVisibility(); // Hide pages 2+ on mobile
-                    // Safari-specific: Force remove inline styles on desktop immediately and after delay
+                    // Safari-specific: Force remove inline styles on desktop
                     if (!isMobile()) {
-                        // Remove inline styles immediately
                         const pages = document.querySelectorAll('.newsletter-page, .body-pages');
-                        pages.forEach(page => {
-                            page.style.removeProperty('display'); // Remove inline style to let CSS handle it
-                        });
+                        pages.forEach(page => page.style.removeProperty('display'));
                         // Also remove after a delay in case JavaScript sets them again
                         setTimeout(() => {
-                            pages.forEach(page => {
-                                page.style.removeProperty('display');
-                            });
+                            pages.forEach(page => page.style.removeProperty('display'));
                         }, 200);
                     }
                     updateArticlePageReferences(limitedArticles);
                     adjustAllTitleSizes();
-                    // DISABLED: preventOrphanedHeadings() causes titles to appear in wrong places when CSS columns reflow
-                    // preventOrphanedHeadings(); // Prevent headings from being orphaned at bottom of columns
                     preventOrphanedImageCaptions(); // Prevent image captions from being orphaned
                     markFootnotesSections(); // Mark footnotes sections for spacing
                     
-                    // DISABLED: preventOrphanedHeadings() causes titles to appear in wrong places when CSS columns reflow
-                    // Retry orphaned heading detection after a short delay to catch any that were missed
                     setTimeout(() => {
-                        // preventOrphanedHeadings();
                         addPageNumbers(); // Add page numbers to pages 2+
                     }, 100);
                 } catch (e) {
@@ -1581,23 +1593,14 @@ function adjustTitleFontSize(titleElement) {
 // Trim Article 1 content on page 1 to fit within available space
 function trimArticle1ToFit() {
     try {
-    const firstPage = document.querySelector('.newsletter-page');
-    if (!firstPage) {
-        console.log('trimArticle1ToFit: No first page found');
-        return;
-    }
+        const firstPage = document.querySelector('.newsletter-page');
+    if (!firstPage) return;
     
     const article1Content = firstPage.querySelector('.article-col-right .article-content-right');
-    if (!article1Content) {
-        console.log('trimArticle1ToFit: No article-content-right found in article-col-right');
-        return;
-    }
+    if (!article1Content) return;
     
     const articleColRight = firstPage.querySelector('.article-col-right');
-    if (!articleColRight) {
-        console.log('trimArticle1ToFit: No article-col-right found');
-        return;
-    }
+    if (!articleColRight) return;
     
     // Get the max height available - account for page padding (0.25in = 18px at 72dpi, but use actual computed)
     const newsletterContent = firstPage.querySelector('.newsletter-content');
@@ -1656,9 +1659,6 @@ function trimArticle1ToFit() {
         const actualHeight = continued.offsetHeight + parseFloat(contStyle.marginTop) + parseFloat(contStyle.marginBottom);
         // Use the larger of actual height + 15px padding, or our conservative estimate
         continuedHeight = Math.max(actualHeight + 15, 45);
-        console.log('trimArticle1ToFit: continued element height:', actualHeight, 'reserved:', continuedHeight);
-    } else {
-        console.log('trimArticle1ToFit: continued element not found, reserving 45px');
     }
     usedHeight += continuedHeight;
     
@@ -1671,13 +1671,9 @@ function trimArticle1ToFit() {
     // Get the actual rendered height of the content
     const actualContentHeight = article1Content.scrollHeight;
     
-    console.log('trimArticle1ToFit: maxContentHeight:', maxContentHeight, 'usedHeight:', usedHeight, 'availableHeight:', availableHeight);
-    console.log('trimArticle1ToFit: article1Content.scrollHeight:', actualContentHeight);
-    
     // Check if content actually overflows - add a small tolerance to prevent unnecessary trimming
     // Only trim if content is significantly overflowing (more than 10px) to prevent jumping
     if (actualContentHeight > availableHeight + 10) {
-        console.log('trimArticle1ToFit: Content overflows by', (actualContentHeight - availableHeight).toFixed(0), 'px, trimming...');
         
         // Content overflows - need to trim it
         const elements = Array.from(article1Content.children);
@@ -1705,8 +1701,6 @@ function trimArticle1ToFit() {
             // Force reflow
             tempContainer.offsetHeight;
             const testHeight = tempContainer.scrollHeight;
-            
-            console.log('trimArticle1ToFit: Element', i, 'testHeight:', testHeight, 'availableHeight:', availableHeight);
             
             if (testHeight <= availableHeight) {
                 // This element fits
@@ -1767,7 +1761,6 @@ function trimArticle1ToFit() {
             }
         }
         
-        console.log('trimArticle1ToFit: Fitting content length:', fittingContent.length, 'Remaining content length:', remainingContent.length);
         
         // Update the content
         article1Content.innerHTML = fittingContent;
@@ -1780,11 +1773,9 @@ function trimArticle1ToFit() {
             const page2Content = page2.querySelector('.article-columns-three-css');
             if (page2Content) {
                 page2Content.innerHTML = remainingContent + page2Content.innerHTML;
-                console.log('trimArticle1ToFit: Added remaining content to page 2');
             }
         }
     } else {
-        console.log('trimArticle1ToFit: Content fits, no trimming needed');
         // Force a final reflow to ensure layout is stable
         articleColRight.offsetHeight;
         article1Content.offsetHeight;
@@ -2192,15 +2183,10 @@ function splitPagesDynamically() {
         // Get max height for content area (page height minus masthead)
         // Safari may need explicit calculation instead of relying on computed maxHeight
         const pageHeight = parseFloat(getComputedStyle(page).height) || 11 * 96; // 11in in pixels
-        const mastheadHeight = page.querySelector('.newsletter-masthead') ? 
-            page.querySelector('.newsletter-masthead').offsetHeight : 0;
+        const mastheadHeight = page.querySelector('.newsletter-masthead')?.offsetHeight || 0;
         const padding = parseFloat(getComputedStyle(page).paddingTop) + parseFloat(getComputedStyle(page).paddingBottom);
         const maxHeight = (pageHeight - mastheadHeight - padding) || parseFloat(getComputedStyle(contentArea).maxHeight) || (10.5 * 96);
-        console.log('Page', pageIndex, 'maxHeight:', maxHeight, 'pageHeight:', pageHeight, 'mastheadHeight:', mastheadHeight);
-        if (!maxHeight || maxHeight <= 0) {
-            console.warn('Invalid maxHeight, using fallback');
-            continue;
-        }
+        if (!maxHeight || maxHeight <= 0) continue;
         
         // Check if content overflows
         // CSS columns with overflow:hidden clips content, so scrollHeight might equal clientHeight
@@ -2240,9 +2226,7 @@ function splitPagesDynamically() {
             console.log('Content overflows on page', pageIndex, '- splitting. Content height:', contentHeight, 'Container height:', containerHeight, 'Elements:', elementCount);
             
             // Content overflows - split into multiple pages
-            // Get all child elements
             const elements = Array.from(contentDiv.children);
-            console.log('Found', elements.length, 'elements to split');
             if (elements.length === 0) continue;
             
             // Split pages element by element - allows articles to span multiple pages
@@ -2292,13 +2276,11 @@ function splitPagesDynamically() {
                 // Also check if we've accumulated enough elements (every ~40-50 elements should be a page)
                 const overflowThreshold = maxHeight * 0.98; // 98% of maxHeight - fill pages more
                 const elementCountOnPage = (currentPageContent.match(/<[^>]+>/g) || []).length;
-                const shouldCreatePage = testHeight > overflowThreshold || (elementCountOnPage > 50 && testHeight > maxHeight * 0.90);
+                const shouldCreatePage = testHeight > overflowThreshold || (elementCountOnPage > 100 && testHeight > maxHeight * 0.98);
                 
                 if (shouldCreatePage) {
                     // If current page already has content, finalize it and create new page
                     if (currentPageContent.trim() !== '') {
-                        console.log('Creating new page after element', i, 'testHeight:', testHeight, 'maxHeight:', maxHeight, 'threshold:', overflowThreshold);
-                        
                         // Set current page content (without the element that caused overflow)
                         currentContentDiv.innerHTML = currentPageContent;
                         
@@ -2315,18 +2297,13 @@ function splitPagesDynamically() {
                         const parentNode = currentPage.parentNode;
                         if (parentNode) {
                             parentNode.insertBefore(newPage, currentPage.nextSibling);
-                            console.log('Inserted new page into DOM. Total pages now:', document.querySelectorAll('.newsletter-page').length);
                         } else {
-                            console.error('ERROR: Cannot insert new page - parentNode is null!');
                             // Fallback: try to append to newsletter container
                             const newsletterContainer = document.getElementById('newsletter-container');
                             if (newsletterContainer) {
                                 const newsletter = newsletterContainer.querySelector('#newsletter .newsletter') || newsletterContainer.querySelector('.newsletter');
                                 if (newsletter) {
                                     newsletter.appendChild(newPage);
-                                    console.log('Inserted new page into newsletter container as fallback');
-                                } else {
-                                    console.error('ERROR: Cannot find newsletter container to append page!');
                                 }
                             }
                         }
@@ -2345,11 +2322,9 @@ function splitPagesDynamically() {
                         currentContentDiv = newContentDiv;
                         currentPageContent = elementHTML; // Start new page with the element that overflowed
                         pagesCreated++;
-                        console.log('Pages created so far:', pagesCreated);
                     } else {
                         // Current page is empty but element overflows - add it anyway
                         // This handles edge case where a single large element exceeds page height
-                        console.log('Element', i, 'overflows empty page, adding anyway. testHeight:', testHeight);
                         currentPageContent += elementHTML;
                     }
                 } else {
@@ -2359,14 +2334,9 @@ function splitPagesDynamically() {
             }
             
             // CRITICAL: Always set final page content
-            // This ensures the last page displays even with minimal content
-            console.log('Setting final page content. currentPageContent length:', currentPageContent ? currentPageContent.length : 0);
-            
             // Ensure we have a valid content div reference
             if (!currentContentDiv || !currentContentDiv.parentNode) {
-                console.error('ERROR: currentContentDiv is invalid! Attempting recovery...');
                 const allPages = document.querySelectorAll('.newsletter-page');
-                console.log('Total pages found:', allPages.length);
                 if (allPages.length > 0) {
                     const lastPage = allPages[allPages.length - 1];
                     currentContentDiv = lastPage.querySelector('.article-columns-three-css');
@@ -2378,19 +2348,15 @@ function splitPagesDynamically() {
                             currentContentDiv.style.width = '100%';
                             currentContentDiv.style.maxWidth = '100%';
                             contentArea.appendChild(currentContentDiv);
-                            console.log('Created new contentDiv for final page');
                         }
                     }
                     currentPage = lastPage;
                 }
             }
             
-            // Set final page content - this should always have content since we add elements one by one
+            // Set final page content
             if (currentPageContent && currentPageContent.trim() !== '' && currentContentDiv) {
                 currentContentDiv.innerHTML = currentPageContent;
-                console.log('Successfully set final page content');
-            } else {
-                console.warn('WARNING: Final page content was empty');
             }
             
             // Ensure pages are visible
@@ -2402,35 +2368,19 @@ function splitPagesDynamically() {
                 currentContentDiv.offsetHeight; // Force reflow
             }
             
+            // Set page visibility (handled by updatePageVisibility() later, but set here for immediate effect)
             if (currentPage && currentPage.parentNode) {
-                // On mobile, only show first page; on desktop, remove inline styles to let CSS handle it
-                const pageIndex = Array.from(document.querySelectorAll('.newsletter-page')).indexOf(currentPage);
-                const mobile = isMobile();
-                if (mobile) {
-                    if (pageIndex === 0) {
-                        currentPage.style.display = 'flex';
-                    } else {
-                        currentPage.style.display = 'none';
-                    }
+                if (isMobile()) {
+                    const pageIndex = Array.from(document.querySelectorAll('.newsletter-page')).indexOf(currentPage);
+                    currentPage.style.display = pageIndex === 0 ? 'flex' : 'none';
                 } else {
-                    currentPage.style.display = ''; // Remove inline style on desktop
+                    currentPage.style.display = '';
                 }
                 currentPage.offsetHeight; // Force reflow
             }
             
-            console.log('Created', pagesCreated, 'new pages. Total elements processed:', elements.length);
-            
             // Final verification: Ensure all elements were processed
             const finalPages = document.querySelectorAll('.newsletter-page');
-            console.log('FINAL PAGE COUNT:', finalPages.length, 'pages found in DOM');
-            finalPages.forEach((p, idx) => {
-                const contentDiv = p.querySelector('.article-columns-three-css');
-                const elementCount = contentDiv ? contentDiv.children.length : 0;
-                const display = window.getComputedStyle(p).display;
-                const inlineDisplay = p.style.display;
-                console.log(`Page ${idx}: class="${p.className}", elements=${elementCount}, display=${display}, inline=${inlineDisplay || 'none'}`);
-            });
-            
             let totalElementsInPages = 0;
             for (let p = 1; p < finalPages.length; p++) { // Skip page 1
                 const pageContentDiv = finalPages[p].querySelector('.article-columns-three-css');
@@ -2438,79 +2388,26 @@ function splitPagesDynamically() {
                     totalElementsInPages += pageContentDiv.children.length;
                 }
             }
-            console.log('Verification: Original elements:', elements.length, 'Elements in pages:', totalElementsInPages);
             if (totalElementsInPages < elements.length) {
                 console.warn('WARNING: Some elements may have been lost during page splitting!');
             }
         } else {
-            console.log('No overflow detected on page', pageIndex);
-            // Even if no overflow, ensure the page content is set and visible
+            // No overflow - ensure page is visible
             if (contentDiv && contentDiv.children.length > 0) {
-                console.log('Page', pageIndex, 'has', contentDiv.children.length, 'elements, content should be visible');
-                // Force a reflow to ensure content displays
-                contentDiv.offsetHeight;
+                contentDiv.offsetHeight; // Force reflow
                 if (page) {
-                    // On mobile, only show first page; on desktop, remove inline styles to let CSS handle it
-                    const pageIndex = Array.from(document.querySelectorAll('.newsletter-page')).indexOf(page);
-                    const mobile = isMobile();
-                    if (mobile) {
-                        if (pageIndex === 0) {
-                            page.style.display = 'flex';
-                        } else {
-                            page.style.display = 'none';
-                        }
+                    if (isMobile()) {
+                        const pageIndex = Array.from(document.querySelectorAll('.newsletter-page')).indexOf(page);
+                        page.style.display = pageIndex === 0 ? 'flex' : 'none';
                     } else {
-                        page.style.display = ''; // Remove inline style on desktop
+                        page.style.display = '';
                     }
                     page.offsetHeight;
                 }
-            } else {
-                console.log('Warning: Page', pageIndex, 'has no content elements');
             }
         }
     }
     
-    // Final safeguard: Ensure the last page always displays
-    const allPagesAfter = document.querySelectorAll('.newsletter-page');
-    console.log('Final safeguard - Total pages after processing:', allPagesAfter.length);
-    if (allPagesAfter.length > 1) {
-        const lastPage = allPagesAfter[allPagesAfter.length - 1];
-        const lastContentDiv = lastPage.querySelector('.article-columns-three-css');
-        console.log('Last page:', lastPage, 'Content div:', lastContentDiv);
-        
-        if (lastContentDiv) {
-            const elementCount = lastContentDiv.children.length;
-            const contentHTML = lastContentDiv.innerHTML.trim();
-            console.log('Last page has', elementCount, 'elements, content length:', contentHTML.length);
-            
-            // Ensure page is visible (but hide pages 2+ on mobile)
-            const lastPageIndex = Array.from(document.querySelectorAll('.newsletter-page')).indexOf(lastPage);
-            const mobile = isMobile();
-            if (mobile) {
-                if (lastPageIndex === 0) {
-                    lastPage.style.display = 'flex';
-                } else {
-                    lastPage.style.display = 'none';
-                }
-            } else {
-                lastPage.style.display = ''; // Remove inline style on desktop
-            }
-            lastContentDiv.style.display = 'block';
-            
-            // Force reflow to ensure content renders
-            lastPage.offsetHeight;
-            lastContentDiv.offsetHeight;
-            
-            // Verify content exists
-            if (contentHTML.length === 0 && elementCount === 0) {
-                console.warn('WARNING: Last page is empty - this may indicate content was lost during splitting');
-            } else {
-                console.log('Last page content confirmed with', elementCount, 'elements');
-            }
-        } else {
-            console.error('ERROR: Last page has no content div!');
-        }
-    }
 }
 
 // Update page references on front page to point to actual pages where articles start
@@ -3553,185 +3450,6 @@ function markFootnotesSections() {
     } // End for loop
 }
 
-// Move a heading to the next page
-function moveHeadingToNextPage(heading, currentPageIndex, pages) {
-    // Get all pages (in case pages NodeList was stale)
-    const allPages = document.querySelectorAll('.newsletter-page');
-    
-    // Get the next page
-    const nextPageIndex = currentPageIndex + 1;
-    let nextPage = allPages[nextPageIndex];
-    
-    if (!nextPage) {
-        // No next page exists, create one
-        const lastPage = allPages[allPages.length - 1];
-        const newPage = document.createElement('div');
-        const currentMode = getCurrentMode();
-        const modeClass = currentMode && currentMode !== 'normal' ? ` mode-${currentMode}` : '';
-        newPage.className = `newsletter-page${modeClass}`;
-        newPage.innerHTML = `
-            <div class="newsletter-content">
-                <div class="article-columns-three-css"></div>
-            </div>
-        `;
-        lastPage.parentElement.appendChild(newPage);
-        nextPage = newPage;
-    }
-    
-    const nextPageContent = nextPage.querySelector('.article-columns-three-css');
-    if (!nextPageContent) return;
-    
-    // Clone the heading
-    const headingClone = heading.cloneNode(true);
-    
-    // Remove the force-page-break and force-column-break classes if they exist
-    headingClone.classList.remove('force-page-break');
-    headingClone.classList.remove('force-column-break');
-    
-    // Insert at the beginning of the next page's content
-    if (nextPageContent.firstChild) {
-        nextPageContent.insertBefore(headingClone, nextPageContent.firstChild);
-    } else {
-        nextPageContent.appendChild(headingClone);
-    }
-    
-    // Remove the original heading
-    heading.remove();
-}
-
-// Prevent orphaned headings - ensure headings have at least one line of content below them in their column
-function preventOrphanedHeadings() {
-    const pages = document.querySelectorAll('.newsletter-page');
-    
-    // Process pages 2+ (skip page 1 which has special layout)
-    for (let pageIndex = 1; pageIndex < pages.length; pageIndex++) {
-        const page = pages[pageIndex];
-        const contentDiv = page.querySelector('.article-columns-three-css');
-        if (!contentDiv) continue;
-        
-        // Get all headings in this page
-        const headings = Array.from(contentDiv.querySelectorAll('h1, h2, h3, h4, h5, h6, .article-title'));
-        
-        headings.forEach((heading, index) => {
-            // Get the next sibling element that contains text content
-            let nextSibling = heading.nextElementSibling;
-            
-            // Skip empty elements and find the first element with actual text content
-            while (nextSibling && (
-                nextSibling.textContent.trim().length === 0 ||
-                nextSibling.tagName === 'BR' ||
-                (nextSibling.tagName === 'HR' && !nextSibling.classList.contains('footnotes-divider'))
-            )) {
-                nextSibling = nextSibling.nextElementSibling;
-            }
-            
-            // If no next sibling with content, the heading might be orphaned - force break
-            if (!nextSibling) {
-                // Determine which column the heading is in
-                const headingRect = heading.getBoundingClientRect();
-                const containerRect = contentDiv.getBoundingClientRect();
-                const columnWidth = containerRect.width / 3;
-                const headingColumnIndex = Math.floor((headingRect.left - containerRect.left) / columnWidth);
-                const isInThirdColumn = headingColumnIndex >= 2;
-                
-                if (isInThirdColumn) {
-                    // Move heading to next page
-                    moveHeadingToNextPage(heading, pageIndex, pages);
-                    console.log('Heading with no next sibling (third column) - moving to next page:', heading.textContent.substring(0, 50), 'column index:', headingColumnIndex);
-                } else {
-                    heading.classList.add('force-column-break');
-                    console.log('Heading with no next sibling - forcing column break:', heading.textContent.substring(0, 50), 'column index:', headingColumnIndex);
-                }
-                return;
-            }
-            
-            // Check if the heading and its next sibling are in different columns
-            // by comparing their vertical positions (in CSS columns, elements in same column have similar top values)
-            const headingRect = heading.getBoundingClientRect();
-            const nextRect = nextSibling.getBoundingClientRect();
-            const containerRect = contentDiv.getBoundingClientRect();
-            
-            // Calculate the vertical distance between heading bottom and next element top
-            const verticalDiff = nextRect.top - headingRect.bottom;
-            
-            // Get the computed line height to estimate one visual line
-            const computedStyle = getComputedStyle(nextSibling);
-            const lineHeight = parseFloat(computedStyle.lineHeight) || parseFloat(computedStyle.fontSize) * 1.5;
-            
-            // Check if heading and next element are in the same column by comparing their left positions
-            // In CSS columns, elements in the same column have similar left positions
-            const headingLeft = headingRect.left;
-            const nextLeft = nextRect.left;
-            const leftDiff = Math.abs(headingLeft - nextLeft);
-            
-            // If elements are in different columns (large left difference), heading is orphaned
-            // Threshold for same column (accounts for margins/padding and column gaps)
-            const areInSameColumn = leftDiff < 100; // Increased threshold for column gap (0.25in = ~24px)
-            
-            // Calculate how close the heading is to the bottom of the container
-            // This helps detect headings that are at the bottom of a column
-            const headingBottomFromContainerTop = headingRect.bottom - containerRect.top;
-            const containerHeight = containerRect.height;
-            const distanceFromBottom = containerHeight - headingBottomFromContainerTop;
-            
-            // Get heading's computed style for line height
-            const headingStyle = getComputedStyle(heading);
-            const headingLineHeight = parseFloat(headingStyle.lineHeight) || parseFloat(headingStyle.fontSize) * 1.5;
-            
-            // Calculate approximate column height (container height divided by number of columns)
-            // In CSS columns, content flows vertically, so we estimate column height
-            const estimatedColumnHeight = containerHeight; // For CSS columns, this is the full height
-            
-            // Check if heading is in the bottom portion of its column
-            // We need to determine which "column" the heading is in based on its left position
-            const columnWidth = containerRect.width / 3; // Assuming 3 columns
-            const headingColumnIndex = Math.floor((headingRect.left - containerRect.left) / columnWidth);
-            const isInThirdColumn = headingColumnIndex >= 2; // Third column (0-indexed: 0, 1, 2)
-            
-            // More aggressive detection: if heading and next element are in different columns, it's orphaned
-            // OR if there's a large vertical gap (more than 0.8x line height), it's orphaned
-            // OR if heading is very close to bottom (less than 2x line height) and next is in different column
-            if (!areInSameColumn) {
-                // Always force break if in different columns - heading is definitely orphaned
-                // If in third column, move to next page; otherwise force column break
-                if (isInThirdColumn) {
-                    // Move heading to next page
-                    moveHeadingToNextPage(heading, pageIndex, pages);
-                    console.log('Orphaned heading (third column, different column) - moving to next page:', heading.textContent.substring(0, 50), 
-                        'left diff:', leftDiff, 'vertical diff:', verticalDiff, 'column index:', headingColumnIndex);
-                } else {
-                    heading.classList.add('force-column-break');
-                    console.log('Orphaned heading (different column) - forcing column break:', heading.textContent.substring(0, 50), 
-                        'left diff:', leftDiff, 'vertical diff:', verticalDiff, 'column index:', headingColumnIndex);
-                }
-            } else if (verticalDiff > lineHeight * 0.8) {
-                // If large gap even in same column, likely orphaned
-                if (isInThirdColumn) {
-                    // Move heading to next page
-                    moveHeadingToNextPage(heading, pageIndex, pages);
-                    console.log('Orphaned heading (third column, large gap) - moving to next page:', heading.textContent.substring(0, 50), 
-                        'vertical diff:', verticalDiff, 'line height:', lineHeight, 'column index:', headingColumnIndex);
-                } else {
-                    heading.classList.add('force-column-break');
-                    console.log('Orphaned heading detected (large gap) - forcing column break:', heading.textContent.substring(0, 50), 
-                        'vertical diff:', verticalDiff, 'line height:', lineHeight, 'column index:', headingColumnIndex);
-                }
-            } else if (distanceFromBottom < lineHeight * 2 && verticalDiff > 5) {
-                // If heading is near bottom and there's any gap, it might be orphaned
-                if (isInThirdColumn) {
-                    // Move heading to next page
-                    moveHeadingToNextPage(heading, pageIndex, pages);
-                    console.log('Orphaned heading (third column, near bottom) - moving to next page:', heading.textContent.substring(0, 50), 
-                        'distance from bottom:', distanceFromBottom, 'line height:', lineHeight, 'vertical diff:', verticalDiff, 'column index:', headingColumnIndex);
-                } else {
-                    heading.classList.add('force-column-break');
-                    console.log('Orphaned heading (near bottom) - forcing column break:', heading.textContent.substring(0, 50), 
-                        'distance from bottom:', distanceFromBottom, 'line height:', lineHeight, 'vertical diff:', verticalDiff, 'column index:', headingColumnIndex);
-                }
-            }
-        });
-    }
-}
 
 // Add page numbers to pages 2+ in the bottom right corner
 function addPageNumbers() {
@@ -3852,9 +3570,6 @@ function applyModeToPages() {
         // Add the current mode class if not 'normal'
         if (mode && mode !== 'normal') {
             page.classList.add(`mode-${mode}`);
-            console.log(`Added mode-${mode} to page`);
-        } else {
-            console.log('Mode is normal, no class added');
         }
     });
     
