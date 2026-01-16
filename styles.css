@@ -460,6 +460,8 @@ header ~ p a {
     position: relative;
     box-sizing: border-box;
     break-before: page;
+    display: flex; /* Explicit display for Safari compatibility */
+    flex-direction: column;
 }
 
 .body-pages.mode-evil {
@@ -2465,6 +2467,22 @@ header ~ p a {
     #newsletter-container .newsletter-page:not(:first-child) {
         display: none !important;
     }
+    
+    /* Safari-specific: Ensure pages are hidden on mobile even if JavaScript hasn't run */
+    @supports (-webkit-appearance: none) {
+        #newsletter-container .newsletter-page:not(:first-child),
+        #newsletter-container .body-pages {
+            display: none !important;
+        }
+    }
+    
+    /* Safari-specific: Ensure pages are hidden on mobile even if JavaScript hasn't run */
+    @supports (-webkit-appearance: none) {
+        #newsletter-container .newsletter-page:not(:first-child),
+        #newsletter-container .body-pages {
+            display: none !important;
+        }
+    }
 
     /* Ensure front page is visible */
     #newsletter-container .front-page,
@@ -2610,7 +2628,9 @@ header ~ p a {
 }
 
 /* Ensure desktop is not affected by mobile styles */
-@media screen and (min-width: 769px) {
+/* Use both min-width and device-width for better Safari compatibility */
+@media screen and (min-width: 769px),
+       screen and (min-device-width: 769px) {
     #newsletter-container {
         width: 100% !important;
         margin-top: 0 !important;
@@ -2660,17 +2680,64 @@ header ~ p a {
     }
     
     /* Explicitly ensure all newsletter pages beyond page 1 are visible on desktop */
+    /* Safari needs more explicit rules - target all possible page selectors */
+    /* First, remove any inline styles that might be set by JavaScript */
     #newsletter-container .newsletter-page:not(:first-child),
     #newsletter-container .newsletter-page:nth-child(2),
-    #newsletter-container .newsletter-page:nth-child(n+2) {
+    #newsletter-container .newsletter-page:nth-child(n+2),
+    #newsletter-container .newsletter-page:nth-child(3),
+    #newsletter-container .newsletter-page:nth-child(4),
+    #newsletter-container .newsletter-page:nth-child(5),
+    #newsletter-container .newsletter-page:nth-child(6),
+    #newsletter-container .newsletter-page:nth-child(7),
+    #newsletter-container .newsletter-page:nth-child(8),
+    #newsletter-container .newsletter-page:nth-child(9),
+    #newsletter-container .newsletter-page:nth-child(10),
+    #newsletter .newsletter-page:not(:first-child),
+    #newsletter .newsletter-page:nth-child(2),
+    #newsletter .newsletter-page:nth-child(n+2),
+    .newsletter .newsletter-page:not(:first-child),
+    .newsletter .newsletter-page:nth-child(2),
+    .newsletter .newsletter-page:nth-child(n+2) {
         display: flex !important; /* Override any mobile hiding rules */
+        visibility: visible !important; /* Safari-specific: ensure visibility */
+        opacity: 1 !important; /* Safari-specific: ensure opacity */
     }
     
-    /* Ensure body-pages are visible on desktop */
+    /* Safari-specific fix: Use @supports to target Safari specifically */
+    @supports (-webkit-appearance: none) {
+        #newsletter-container .newsletter-page:not(:first-child),
+        #newsletter-container .newsletter-page:nth-child(2),
+        #newsletter-container .newsletter-page:nth-child(n+2),
+        #newsletter-container .body-pages {
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            /* Force override any inline styles */
+            display: flex !important;
+        }
+    }
+    
+    /* Ensure body-pages are visible on desktop - Safari needs explicit rules */
     #newsletter-container .body-pages,
+    #newsletter-container .body-pages:nth-child(2),
+    #newsletter-container .body-pages:nth-child(3),
+    #newsletter-container .body-pages:nth-child(4),
+    #newsletter-container .body-pages:nth-child(5),
+    #newsletter-container .body-pages:nth-child(6),
+    #newsletter-container .body-pages:nth-child(7),
+    #newsletter-container .body-pages:nth-child(8),
+    #newsletter-container .body-pages:nth-child(9),
+    #newsletter-container .body-pages:nth-child(10),
     #newsletter .body-pages,
-    .newsletter .body-pages {
+    #newsletter .body-pages:nth-child(2),
+    #newsletter .body-pages:nth-child(n+2),
+    .newsletter .body-pages,
+    .newsletter .body-pages:nth-child(2),
+    .newsletter .body-pages:nth-child(n+2) {
         display: flex !important; /* Override any mobile hiding rules */
+        visibility: visible !important; /* Safari-specific: ensure visibility */
+        opacity: 1 !important; /* Safari-specific: ensure opacity */
     }
     
     #newsletter-container .body-pages:last-child {

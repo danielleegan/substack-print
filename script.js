@@ -24,23 +24,44 @@ function getRSSFeedURL(url) {
 
 // Helper function to check if we're on mobile
 function isMobile() {
-    return window.matchMedia('(max-width: 768px)').matches;
+    // Use both window width and matchMedia for better Safari compatibility
+    const width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+    return width <= 768 || window.matchMedia('(max-width: 768px)').matches;
 }
 
 // Function to update page visibility based on screen size
 function updatePageVisibility() {
     const pages = document.querySelectorAll('.newsletter-page');
+    const bodyPages = document.querySelectorAll('.body-pages');
     const mobile = isMobile();
     
-    pages.forEach((page, idx) => {
-        if (!mobile || idx === 0) {
-            // Show page on desktop, or if it's the first page on mobile
-            page.style.display = 'flex';
-        } else {
-            // Hide pages 2+ on mobile
+    if (mobile) {
+        // On mobile: hide pages 2+ using inline styles (highest priority)
+        pages.forEach((page, idx) => {
+            if (idx === 0) {
+                // Show first page on mobile
+                page.style.display = 'flex';
+            } else {
+                // Hide pages 2+ on mobile
+                page.style.display = 'none';
+            }
+        });
+        
+        // Hide all body-pages on mobile
+        bodyPages.forEach(page => {
             page.style.display = 'none';
-        }
-    });
+        });
+    } else {
+        // On desktop: remove inline styles to let CSS handle it
+        // This is critical for Safari which respects CSS rules when inline styles are removed
+        pages.forEach((page) => {
+            page.style.display = ''; // Remove inline style, let CSS handle it
+        });
+        
+        bodyPages.forEach(page => {
+            page.style.display = ''; // Remove inline style, let CSS handle it
+        });
+    }
 }
 
 // Function to show/hide mobile-only elements
@@ -1349,6 +1370,20 @@ async function processSubstackURL(url) {
                     splitPagesDynamically();
                     applyModeToPages(); // Apply mode after pages are split
                     updatePageVisibility(); // Hide pages 2+ on mobile
+                    // Safari-specific: Force remove inline styles on desktop immediately and after delay
+                    if (!isMobile()) {
+                        // Remove inline styles immediately
+                        const pages = document.querySelectorAll('.newsletter-page, .body-pages');
+                        pages.forEach(page => {
+                            page.style.removeProperty('display'); // Remove inline style to let CSS handle it
+                        });
+                        // Also remove after a delay in case JavaScript sets them again
+                        setTimeout(() => {
+                            pages.forEach(page => {
+                                page.style.removeProperty('display');
+                            });
+                        }, 200);
+                    }
                     updateArticlePageReferences(limitedArticles);
                     adjustAllTitleSizes();
                     // DISABLED: preventOrphanedHeadings() causes titles to appear in wrong places when CSS columns reflow
@@ -2113,12 +2148,18 @@ function splitPagesDynamically() {
     console.log('splitPagesDynamically called, found', pages.length, 'pages');
     
     // Ensure all pages are visible (but hide pages 2+ on mobile)
+    const mobile = isMobile();
     pages.forEach((p, idx) => {
-        // On mobile, only show first page; on desktop, show all pages
-        if (!isMobile() || idx === 0) {
-            p.style.display = 'flex';
+        if (mobile) {
+            // On mobile, only show first page
+            if (idx === 0) {
+                p.style.display = 'flex';
+            } else {
+                p.style.display = 'none';
+            }
         } else {
-            p.style.display = 'none';
+            // On desktop, remove inline styles to let CSS handle it (important for Safari)
+            p.style.display = '';
         }
         const contentDiv = p.querySelector('.article-columns-three-css');
         if (contentDiv) {
@@ -2149,22 +2190,33 @@ function splitPagesDynamically() {
         }
         
         // Get max height for content area (page height minus masthead)
-        const maxHeight = parseFloat(getComputedStyle(contentArea).maxHeight);
-        console.log('Page', pageIndex, 'maxHeight:', maxHeight);
-        if (!maxHeight) continue;
+        // Safari may need explicit calculation instead of relying on computed maxHeight
+        const pageHeight = parseFloat(getComputedStyle(page).height) || 11 * 96; // 11in in pixels
+        const mastheadHeight = page.querySelector('.newsletter-masthead') ? 
+            page.querySelector('.newsletter-masthead').offsetHeight : 0;
+        const padding = parseFloat(getComputedStyle(page).paddingTop) + parseFloat(getComputedStyle(page).paddingBottom);
+        const maxHeight = (pageHeight - mastheadHeight - padding) || parseFloat(getComputedStyle(contentArea).maxHeight) || (10.5 * 96);
+        console.log('Page', pageIndex, 'maxHeight:', maxHeight, 'pageHeight:', pageHeight, 'mastheadHeight:', mastheadHeight);
+        if (!maxHeight || maxHeight <= 0) {
+            console.warn('Invalid maxHeight, using fallback');
+            continue;
+        }
         
         // Check if content overflows
         // CSS columns with overflow:hidden clips content, so scrollHeight might equal clientHeight
         // We need to temporarily remove overflow to measure actual content height
         const originalOverflow = contentDiv.style.overflow;
         const originalMaxHeight = contentDiv.style.maxHeight;
+        const originalColumnCount = contentDiv.style.columnCount;
         
         // Temporarily allow overflow to measure actual content height
         contentDiv.style.overflow = 'visible';
         contentDiv.style.maxHeight = 'none';
+        contentDiv.style.columnCount = 'auto'; // Temporarily disable columns to get true height
         
-        // Force reflow
+        // Force reflow - Safari needs multiple reflows
         contentDiv.offsetHeight;
+        void contentDiv.offsetHeight; // Force another reflow
         
         const contentHeight = contentDiv.scrollHeight;
         const containerHeight = contentArea.clientHeight || maxHeight;
@@ -2172,6 +2224,7 @@ function splitPagesDynamically() {
         // Restore original styles
         contentDiv.style.overflow = originalOverflow;
         contentDiv.style.maxHeight = originalMaxHeight;
+        contentDiv.style.columnCount = originalColumnCount;
         
         const elementCount = contentDiv.children.length;
         const overflowRatio = contentHeight / containerHeight;
@@ -2180,7 +2233,8 @@ function splitPagesDynamically() {
         
         // Check if content overflows - if so, split into multiple pages
         // Use a threshold that accounts for CSS column balancing
-        const hasOverflow = contentHeight > containerHeight * 1.05; // 5% tolerance for column balancing
+        // Also check element count as a fallback - if we have many elements, likely overflow
+        const hasOverflow = contentHeight > containerHeight * 1.05 || (elementCount > 50 && contentHeight > containerHeight * 0.8);
         
         if (hasOverflow) {
             console.log('Content overflows on page', pageIndex, '- splitting. Content height:', contentHeight, 'Container height:', containerHeight, 'Elements:', elementCount);
@@ -2204,24 +2258,29 @@ function splitPagesDynamically() {
                 // Normal element processing: Test if adding this element would cause overflow
                 const testContent = currentPageContent + elementHTML;
                 
-                // Create a temporary div to measure height
+                // Create a temporary div to measure height - must match actual CSS exactly
                 const testDiv = document.createElement('div');
                 testDiv.className = 'article-columns-three-css';
+                const computedStyle = getComputedStyle(contentDiv);
                 testDiv.style.position = 'absolute';
                 testDiv.style.visibility = 'hidden';
                 testDiv.style.width = contentDiv.offsetWidth + 'px';
                 testDiv.style.height = 'auto';
-                testDiv.style.fontSize = getComputedStyle(contentDiv).fontSize;
-                testDiv.style.lineHeight = getComputedStyle(contentDiv).lineHeight;
+                testDiv.style.fontSize = computedStyle.fontSize;
+                testDiv.style.lineHeight = computedStyle.lineHeight;
+                testDiv.style.columnCount = computedStyle.columnCount || '3';
+                testDiv.style.columnGap = computedStyle.columnGap || '20px';
+                testDiv.style.columnFill = computedStyle.columnFill || 'auto';
                 testDiv.style.maxHeight = maxHeight + 'px';
                 testDiv.style.overflow = 'visible';
                 testDiv.innerHTML = testContent;
                 document.body.appendChild(testDiv);
                 
-                // Force reflow
+                // Force reflow - Safari needs multiple reflows
                 testDiv.offsetHeight;
+                void testDiv.offsetHeight;
                 
-                // Check if content overflows
+                // Check if content overflows - temporarily remove maxHeight to get true height
                 const testMaxHeight = testDiv.style.maxHeight;
                 testDiv.style.maxHeight = 'none';
                 const testHeight = testDiv.scrollHeight;
@@ -2229,12 +2288,16 @@ function splitPagesDynamically() {
                 document.body.removeChild(testDiv);
                 
                 // If adding this element causes overflow, create a new page
-                // Always create a new page if content exceeds maxHeight (even slightly)
-                // This ensures content flows to next page instead of being clipped
-                if (testHeight > maxHeight) {
+                // Use a threshold very close to maxHeight to fill pages more before splitting
+                // Also check if we've accumulated enough elements (every ~40-50 elements should be a page)
+                const overflowThreshold = maxHeight * 0.98; // 98% of maxHeight - fill pages more
+                const elementCountOnPage = (currentPageContent.match(/<[^>]+>/g) || []).length;
+                const shouldCreatePage = testHeight > overflowThreshold || (elementCountOnPage > 50 && testHeight > maxHeight * 0.90);
+                
+                if (shouldCreatePage) {
                     // If current page already has content, finalize it and create new page
                     if (currentPageContent.trim() !== '') {
-                        console.log('Creating new page after element', i, 'testHeight:', testHeight, 'maxHeight:', maxHeight);
+                        console.log('Creating new page after element', i, 'testHeight:', testHeight, 'maxHeight:', maxHeight, 'threshold:', overflowThreshold);
                         
                         // Set current page content (without the element that caused overflow)
                         currentContentDiv.innerHTML = currentPageContent;
@@ -2249,20 +2312,44 @@ function splitPagesDynamically() {
                         newContentDiv.innerHTML = '';
                         newContentArea.appendChild(newContentDiv);
                         newPage.appendChild(newContentArea);
-                        currentPage.parentNode.insertBefore(newPage, currentPage.nextSibling);
+                        const parentNode = currentPage.parentNode;
+                        if (parentNode) {
+                            parentNode.insertBefore(newPage, currentPage.nextSibling);
+                            console.log('Inserted new page into DOM. Total pages now:', document.querySelectorAll('.newsletter-page').length);
+                        } else {
+                            console.error('ERROR: Cannot insert new page - parentNode is null!');
+                            // Fallback: try to append to newsletter container
+                            const newsletterContainer = document.getElementById('newsletter-container');
+                            if (newsletterContainer) {
+                                const newsletter = newsletterContainer.querySelector('#newsletter .newsletter') || newsletterContainer.querySelector('.newsletter');
+                                if (newsletter) {
+                                    newsletter.appendChild(newPage);
+                                    console.log('Inserted new page into newsletter container as fallback');
+                                } else {
+                                    console.error('ERROR: Cannot find newsletter container to append page!');
+                                }
+                            }
+                        }
                         
                         // Force reflow
                         newPage.offsetHeight;
                         newContentDiv.offsetHeight;
+                        
+                        // On mobile, immediately hide this new page (only first page should be visible)
+                        if (isMobile()) {
+                            newPage.style.display = 'none';
+                        }
                         
                         // Move to new page
                         currentPage = newPage;
                         currentContentDiv = newContentDiv;
                         currentPageContent = elementHTML; // Start new page with the element that overflowed
                         pagesCreated++;
+                        console.log('Pages created so far:', pagesCreated);
                     } else {
                         // Current page is empty but element overflows - add it anyway
                         // This handles edge case where a single large element exceeds page height
+                        console.log('Element', i, 'overflows empty page, adding anyway. testHeight:', testHeight);
                         currentPageContent += elementHTML;
                     }
                 } else {
@@ -2316,12 +2403,17 @@ function splitPagesDynamically() {
             }
             
             if (currentPage && currentPage.parentNode) {
-                // On mobile, only show first page; on desktop, show all pages
+                // On mobile, only show first page; on desktop, remove inline styles to let CSS handle it
                 const pageIndex = Array.from(document.querySelectorAll('.newsletter-page')).indexOf(currentPage);
-                if (!isMobile() || pageIndex === 0) {
-                    currentPage.style.display = 'flex';
+                const mobile = isMobile();
+                if (mobile) {
+                    if (pageIndex === 0) {
+                        currentPage.style.display = 'flex';
+                    } else {
+                        currentPage.style.display = 'none';
+                    }
                 } else {
-                    currentPage.style.display = 'none';
+                    currentPage.style.display = ''; // Remove inline style on desktop
                 }
                 currentPage.offsetHeight; // Force reflow
             }
@@ -2330,6 +2422,15 @@ function splitPagesDynamically() {
             
             // Final verification: Ensure all elements were processed
             const finalPages = document.querySelectorAll('.newsletter-page');
+            console.log('FINAL PAGE COUNT:', finalPages.length, 'pages found in DOM');
+            finalPages.forEach((p, idx) => {
+                const contentDiv = p.querySelector('.article-columns-three-css');
+                const elementCount = contentDiv ? contentDiv.children.length : 0;
+                const display = window.getComputedStyle(p).display;
+                const inlineDisplay = p.style.display;
+                console.log(`Page ${idx}: class="${p.className}", elements=${elementCount}, display=${display}, inline=${inlineDisplay || 'none'}`);
+            });
+            
             let totalElementsInPages = 0;
             for (let p = 1; p < finalPages.length; p++) { // Skip page 1
                 const pageContentDiv = finalPages[p].querySelector('.article-columns-three-css');
@@ -2349,12 +2450,17 @@ function splitPagesDynamically() {
                 // Force a reflow to ensure content displays
                 contentDiv.offsetHeight;
                 if (page) {
-                    // On mobile, only show first page; on desktop, show all pages
+                    // On mobile, only show first page; on desktop, remove inline styles to let CSS handle it
                     const pageIndex = Array.from(document.querySelectorAll('.newsletter-page')).indexOf(page);
-                    if (!isMobile() || pageIndex === 0) {
-                        page.style.display = 'flex';
+                    const mobile = isMobile();
+                    if (mobile) {
+                        if (pageIndex === 0) {
+                            page.style.display = 'flex';
+                        } else {
+                            page.style.display = 'none';
+                        }
                     } else {
-                        page.style.display = 'none';
+                        page.style.display = ''; // Remove inline style on desktop
                     }
                     page.offsetHeight;
                 }
@@ -2379,10 +2485,15 @@ function splitPagesDynamically() {
             
             // Ensure page is visible (but hide pages 2+ on mobile)
             const lastPageIndex = Array.from(document.querySelectorAll('.newsletter-page')).indexOf(lastPage);
-            if (!isMobile() || lastPageIndex === 0) {
-                lastPage.style.display = 'flex';
+            const mobile = isMobile();
+            if (mobile) {
+                if (lastPageIndex === 0) {
+                    lastPage.style.display = 'flex';
+                } else {
+                    lastPage.style.display = 'none';
+                }
             } else {
-                lastPage.style.display = 'none';
+                lastPage.style.display = ''; // Remove inline style on desktop
             }
             lastContentDiv.style.display = 'block';
             
