@@ -1342,7 +1342,10 @@ async function processSubstackURL(url) {
                         }
                         
                         try {
-                            optimizeLeftColumnContent(); // Optimize left column to fit maximum content
+                            // Only optimize on desktop - mobile keeps original content
+                            if (!isMobile()) {
+                                optimizeLeftColumnContent(); // Optimize left column to fit maximum content
+                            }
                         } catch (e) {
                             console.error('Error in optimizeLeftColumnContent:', e);
                         }
@@ -1358,7 +1361,10 @@ async function processSubstackURL(url) {
             }
             
             try {
-                optimizeLeftColumnContent(); // Optimize left column to fit maximum content
+                // Only optimize on desktop - mobile keeps original content
+                if (!isMobile()) {
+                    optimizeLeftColumnContent(); // Optimize left column to fit maximum content
+                }
             } catch (e) {
                 console.error('Error in optimizeLeftColumnContent:', e);
             }
@@ -1789,6 +1795,9 @@ function trimArticle1ToFit() {
 // Optimize left column content to fit as much as possible based on available space
 // Balanced approach: Article 2 and Article 3 get approximately equal space
 function optimizeLeftColumnContent() {
+    // Store original content at function scope for fallback
+    let originalSnippetContent = [];
+    
     try {
         const firstPage = document.querySelector('.newsletter-page');
         if (!firstPage) {
@@ -1800,6 +1809,14 @@ function optimizeLeftColumnContent() {
         if (!articleColLeft) {
             console.log('optimizeLeftColumnContent: No article-col-left found');
             return;
+        }
+        
+        // On mobile, skip optimization entirely - keep original content
+        // This function should not be called on mobile at all, but if it is, just return immediately
+        const isMobileDevice = window.innerWidth <= 768;
+        if (isMobileDevice) {
+            console.log('optimizeLeftColumnContent: Mobile detected - skipping optimization');
+            return; // Skip optimization on mobile - keep original content
         }
         
         // Get available height for left column - measure directly on the page
@@ -1831,11 +1848,29 @@ function optimizeLeftColumnContent() {
         });
         
         // Step 1: Calculate total fixed height (titles, images, captions, "See Page X") for all articles
-        // Clear all snippets temporarily to measure only fixed elements
-        articleSections.forEach((section) => {
+        // Store original content before clearing (Safari fallback)
+        // CRITICAL: Double-check we're not on mobile before clearing content
+        const isMobileCheck = window.innerWidth <= 768;
+        if (isMobileCheck) {
+            console.log('optimizeLeftColumnContent: Mobile detected during content clearing - aborting');
+            return; // Safety check - should never reach here if mobile check at top worked
+        }
+        
+        originalSnippetContent = [];
+        articleSections.forEach((section, idx) => {
             const snippet = section.querySelector('.article-snippet');
             if (snippet) {
+                originalSnippetContent[idx] = snippet.innerHTML; // Store original content
+                console.log('optimizeLeftColumnContent: Stored original content for article', idx + 1, 'length:', originalSnippetContent[idx] ? originalSnippetContent[idx].length : 0);
+                // Only clear if we have stored content - safety check
+                if (!originalSnippetContent[idx] || originalSnippetContent[idx].trim() === '') {
+                    console.warn('optimizeLeftColumnContent: Snippet', idx, 'is empty - skipping clear');
+                    return; // Don't clear if already empty
+                }
                 snippet.innerHTML = ''; // Clear to measure fixed elements only
+            } else {
+                originalSnippetContent[idx] = '';
+                console.warn('optimizeLeftColumnContent: No snippet found for article', idx + 1);
             }
         });
         
@@ -1864,14 +1899,28 @@ function optimizeLeftColumnContent() {
         
         const availableSnippetHeight = maxContentHeight - totalFixedHeight - 60; // 60px safety margin to prevent cutoff
         
+        console.log('optimizeLeftColumnContent: totalFixedHeight:', totalFixedHeight, 'maxContentHeight:', maxContentHeight, 'availableSnippetHeight:', availableSnippetHeight);
+        
+        // If fixed elements take up too much space, we need to adjust our approach
+        if (totalFixedHeight >= maxContentHeight - 100) {
+            console.warn('optimizeLeftColumnContent: Fixed elements take up too much space!', totalFixedHeight, 'out of', maxContentHeight, '- this will limit content significantly');
+        }
+        
         // Step 3: Allocate approximately equal space to each article's snippet
         const snippetHeightPerArticle = Math.floor(availableSnippetHeight / articleSections.length);
         
         // Helper function to fill a snippet, measuring directly on the page
-        function fillSnippet(sectionIndex, paragraphs) {
+        // Can break paragraphs by visual lines for better fitting
+        // remainingHeight: maximum height available for this article's content
+        function fillSnippet(sectionIndex, paragraphs, remainingHeight) {
             const section = articleSections[sectionIndex];
             const snippet = section.querySelector('.article-snippet');
             if (!snippet) return '';
+            
+            // Get current height before adding content to this snippet
+            articleColLeft.offsetHeight; // Force reflow
+            const heightBeforeSnippet = articleColLeft.scrollHeight;
+            const maxHeightForThisSnippet = heightBeforeSnippet + (remainingHeight || availableSnippetHeight);
             
             let fittingHTML = '';
             
@@ -1882,42 +1931,61 @@ function optimizeLeftColumnContent() {
                 
                 // Update snippet directly on page
                 snippet.innerHTML = testHTML;
-                articleColLeft.offsetHeight; // Force reflow
+                // Force reflow - critical for Safari to render content
+                snippet.offsetHeight;
+                articleColLeft.offsetHeight;
                 
                 // Measure total column height directly on page
                 const currentHeight = articleColLeft.scrollHeight;
                 
-                // Check if it fits (with safety margin)
-                if (currentHeight <= maxContentHeight - 60) {
+                // Check if it fits - must not exceed maxHeightForThisSnippet
+                if (currentHeight <= maxHeightForThisSnippet) {
                     fittingHTML = testHTML;
                 } else {
                     // Revert to last fitting HTML
                     snippet.innerHTML = fittingHTML;
+                    snippet.offsetHeight;
+                    articleColLeft.offsetHeight;
+                    const baseHeightForParagraph = articleColLeft.scrollHeight;
                     
-                    // Try splitting paragraph by words
+                    // Try breaking paragraph by visual lines for better fitting
+                    // Use binary search approach: find the maximum text that fits
                     const text = paragraph.textContent;
                     const words = text.split(/\s+/);
                     
-                    let fittingWords = [];
-                    for (let j = 0; j < words.length; j++) {
-                        const testWords = [...fittingWords, words[j]];
+                    // Binary search for the maximum number of words that fit
+                    let left = 0;
+                    let right = words.length;
+                    let bestFit = 0;
+                    
+                    while (left < right) {
+                        const mid = Math.floor((left + right) / 2);
+                        const testWords = words.slice(0, mid);
                         const testText = testWords.join(' ');
                         const wordTestHTML = fittingHTML + `<p>${testText}</p>`;
                         
                         snippet.innerHTML = wordTestHTML;
+                        snippet.offsetHeight;
                         articleColLeft.offsetHeight;
                         const wordTestHeight = articleColLeft.scrollHeight;
                         
-                        if (wordTestHeight <= maxContentHeight - 60) {
-                            fittingWords.push(words[j]);
+                        if (wordTestHeight <= maxHeightForThisSnippet) {
+                            // This fits, try more
+                            bestFit = mid;
+                            left = mid + 1;
                         } else {
-                            break;
+                            // This doesn't fit, try less
+                            right = mid;
                         }
                     }
                     
-                    if (fittingWords.length > 0) {
+                    // Restore to best fit
+                    if (bestFit > 0) {
+                        const fittingWords = words.slice(0, bestFit);
                         fittingHTML += `<p>${fittingWords.join(' ')}</p>`;
                         snippet.innerHTML = fittingHTML;
+                        snippet.offsetHeight;
+                        articleColLeft.offsetHeight;
                     }
                     break;
                 }
@@ -1926,10 +1994,10 @@ function optimizeLeftColumnContent() {
             return fittingHTML;
         }
         
-        // Step 4: Fill articles with content, alternating to balance space approximately equally
-        // Parse all article content first
+        // Step 4: Fill articles with content - balanced approach
+        // Allocate space more evenly between articles
         const articleParagraphs = [];
-        articleSections.forEach((section) => {
+        articleSections.forEach((section, idx) => {
             const fullContent = section.getAttribute('data-full-content');
             if (fullContent) {
                 const tempDiv = document.createElement('div');
@@ -1937,142 +2005,390 @@ function optimizeLeftColumnContent() {
                 const paragraphs = Array.from(tempDiv.querySelectorAll('p'));
                 articleParagraphs.push(paragraphs);
             } else {
-                articleParagraphs.push([]);
+                // Fallback: If no data-full-content, try to get from original stored content
+                if (originalSnippetContent[idx]) {
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = originalSnippetContent[idx];
+                    const paragraphs = Array.from(tempDiv.querySelectorAll('p'));
+                    articleParagraphs.push(paragraphs);
+                } else {
+                    articleParagraphs.push([]);
+                }
             }
         });
         
-        // Track current paragraph index for each article
+        // Step 4: Fill articles with balanced content - original working approach
+        // Use round-robin to alternate between articles, adding paragraphs until space is filled
         const paragraphIndices = new Array(articleSections.length).fill(0);
         let currentArticleIndex = 0;
         let hasMoreContent = true;
         let iterationsWithoutProgress = 0;
-        const maxIterations = 1000; // Safety limit to prevent infinite loops
+        let iterationCount = 0;
+        const maxIterations = 1000;
         
-        // Alternate between articles, adding one paragraph at a time
-        for (let iteration = 0; iteration < maxIterations && hasMoreContent; iteration++) {
-            hasMoreContent = false;
-            let progressMade = false;
-            
-            // Try to add a paragraph to the current article
-            const section = articleSections[currentArticleIndex];
+        // Verify we have paragraphs to work with
+        let totalParagraphs = 0;
+        articleParagraphs.forEach((paras, idx) => {
+            totalParagraphs += paras ? paras.length : 0;
+            console.log('optimizeLeftColumnContent: Article', idx + 1, 'has', paras ? paras.length : 0, 'paragraphs');
+        });
+        console.log('optimizeLeftColumnContent: Total paragraphs:', totalParagraphs);
+        
+        if (totalParagraphs === 0) {
+            console.warn('optimizeLeftColumnContent: No paragraphs found - restoring original content');
+            // No paragraphs to optimize, restore original content
+            articleSections.forEach((section, idx) => {
+                const snippet = section.querySelector('.article-snippet');
+                if (snippet && originalSnippetContent[idx] && originalSnippetContent[idx].trim() !== '') {
+                    snippet.innerHTML = originalSnippetContent[idx];
+                    snippet.offsetHeight;
+                }
+            });
+            articleColLeft.offsetHeight;
+            return; // Exit early if no content to optimize
+        }
+        
+        // Fill each article sequentially, accounting for cumulative height
+        // This ensures article 3 doesn't overflow when article 2 takes up space
+        console.log('optimizeLeftColumnContent: Using fillSnippet approach for each article (sequential)');
+        
+        articleSections.forEach((section, idx) => {
             const snippet = section.querySelector('.article-snippet');
-            const paragraphs = articleParagraphs[currentArticleIndex];
-            const currentIndex = paragraphIndices[currentArticleIndex];
+            if (!snippet || !articleParagraphs[idx] || articleParagraphs[idx].length === 0) {
+                // Restore original if no content
+                if (snippet && originalSnippetContent[idx] && originalSnippetContent[idx].trim() !== '') {
+                    snippet.innerHTML = originalSnippetContent[idx];
+                    snippet.offsetHeight;
+                }
+                return;
+            }
             
-            if (snippet && paragraphs && currentIndex < paragraphs.length) {
-                const paragraph = paragraphs[currentIndex];
-                const paragraphHTML = paragraph.outerHTML;
-                const currentHTML = snippet.innerHTML;
-                const testHTML = currentHTML + paragraphHTML;
+            // Measure current height before filling this article
+            articleColLeft.offsetHeight; // Force reflow
+            const heightBeforeThisArticle = articleColLeft.scrollHeight;
+            const remainingHeight = maxContentHeight - heightBeforeThisArticle - 60; // 60px safety margin
+            
+            console.log('optimizeLeftColumnContent: Article', idx + 1, 'height before:', heightBeforeThisArticle, 'remaining:', remainingHeight, 'maxContentHeight:', maxContentHeight);
+            
+            // Use fillSnippet to fill this article, but with updated height constraints
+            const filledHTML = fillSnippet(idx, articleParagraphs[idx], remainingHeight);
+            
+            if (filledHTML && filledHTML.trim() !== '') {
+                snippet.innerHTML = filledHTML;
+                snippet.offsetHeight;
+                articleColLeft.offsetHeight; // Force reflow after setting content
                 
-                // Update snippet
-                snippet.innerHTML = testHTML;
-                articleColLeft.offsetHeight; // Force reflow
+                // Verify it still fits after setting
+                const heightAfter = articleColLeft.scrollHeight;
+                console.log('optimizeLeftColumnContent: Article', idx + 1, 'filled with', filledHTML.split('<p>').length - 1, 'paragraphs, height after:', heightAfter, 'maxContentHeight:', maxContentHeight);
                 
-                // Measure total column height
-                const currentHeight = articleColLeft.scrollHeight;
-                
-                if (currentHeight <= maxContentHeight - 50) {
-                    // It fits, keep it
-                    paragraphIndices[currentArticleIndex]++;
-                    progressMade = true;
-                } else {
-                    // Doesn't fit, revert and try splitting
-                    snippet.innerHTML = currentHTML;
+                // If it overflows, trim it back
+                if (heightAfter > maxContentHeight) {
+                    console.warn('optimizeLeftColumnContent: Article', idx + 1, 'overflowed after setting! Height:', heightAfter, 'max:', maxContentHeight, '- trimming back');
+                    // Trim by removing last paragraph or words until it fits
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = filledHTML;
+                    const paras = Array.from(tempDiv.querySelectorAll('p'));
                     
-                    const text = paragraph.textContent;
-                    const words = text.split(/\s+/);
-                    let fittingWords = [];
-                    
-                    for (let j = 0; j < words.length; j++) {
-                        const testWords = [...fittingWords, words[j]];
-                        const testText = testWords.join(' ');
-                        const wordTestHTML = currentHTML + `<p>${testText}</p>`;
-                        
-                        snippet.innerHTML = wordTestHTML;
+                    for (let p = paras.length - 1; p >= 0; p--) {
+                        const testHTML = paras.slice(0, p).map(p => p.outerHTML).join('');
+                        snippet.innerHTML = testHTML;
+                        snippet.offsetHeight;
                         articleColLeft.offsetHeight;
-                        const wordTestHeight = articleColLeft.scrollHeight;
+                        const testHeight = articleColLeft.scrollHeight;
                         
-                        if (wordTestHeight <= maxContentHeight - 60) {
-                            fittingWords.push(words[j]);
-                        } else {
+                        if (testHeight <= maxContentHeight) {
+                            console.log('optimizeLeftColumnContent: Article', idx + 1, 'trimmed to', p, 'paragraphs, height:', testHeight);
                             break;
                         }
                     }
-                    
-                    if (fittingWords.length > 0) {
-                        snippet.innerHTML = currentHTML + `<p>${fittingWords.join(' ')}</p>`;
-                        paragraphIndices[currentArticleIndex]++;
-                        progressMade = true;
-                    }
-                    // This article is done, but others might have more content
                 }
-            }
-            
-            // Check if other articles have more content
-            for (let i = 0; i < articleSections.length; i++) {
-                if (paragraphIndices[i] < articleParagraphs[i].length) {
-                    hasMoreContent = true;
-                    break;
-                }
-            }
-            
-            // Track progress
-            if (progressMade) {
-                iterationsWithoutProgress = 0;
             } else {
-                iterationsWithoutProgress++;
-                // If we've gone through all articles multiple times without progress, stop
-                if (iterationsWithoutProgress >= articleSections.length * 2) {
-                    break;
+                // If fillSnippet returned empty, restore original
+                if (originalSnippetContent[idx] && originalSnippetContent[idx].trim() !== '') {
+                    snippet.innerHTML = originalSnippetContent[idx];
+                    snippet.offsetHeight;
+                    console.log('optimizeLeftColumnContent: Article', idx + 1, 'fillSnippet returned empty, restored original');
                 }
             }
-            
-            // Move to next article (round-robin)
-            currentArticleIndex = (currentArticleIndex + 1) % articleSections.length;
-        }
+        });
         
-        if (iterationsWithoutProgress >= articleSections.length * 2) {
-            console.log('optimizeLeftColumnContent: Stopped due to no progress');
-        }
+        // Force final reflow
+        articleColLeft.offsetHeight;
+        
+        // CRITICAL: Ensure all articles have content
+        articleSections.forEach((section, idx) => {
+            const snippet = section.querySelector('.article-snippet');
+            if (snippet) {
+                const currentContent = snippet.innerHTML || '';
+                if (!currentContent || currentContent.trim() === '') {
+                    console.warn('optimizeLeftColumnContent: Article', idx + 1, 'is empty after fillSnippet - restoring original');
+                    if (originalSnippetContent[idx] && originalSnippetContent[idx].trim() !== '') {
+                        snippet.innerHTML = originalSnippetContent[idx];
+                        snippet.offsetHeight;
+                    }
+                }
+            }
+        });
+        
+        // Force final reflow
+        articleColLeft.offsetHeight;
+        
+        // Final check: Ensure all snippets have content (critical for mobile and Safari)
+        // ALWAYS restore content if empty, regardless of browser
+        const isMobile = window.innerWidth <= 768;
+        const isSafari = navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome');
+        
+        console.log('optimizeLeftColumnContent: Final check - articleSections.length:', articleSections.length, 'originalSnippetContent.length:', originalSnippetContent.length);
+        
+        articleSections.forEach((section, idx) => {
+            const snippet = section.querySelector('.article-snippet');
+            if (snippet) {
+                // CRITICAL: Always check and restore if empty
+                const currentContent = snippet.innerHTML || '';
+                console.log('optimizeLeftColumnContent: Article', idx + 1, 'current content length:', currentContent.length);
+                
+                if (!currentContent || currentContent.trim() === '') {
+                    console.log('optimizeLeftColumnContent: Snippet', idx, '(Article', idx + 1, ') is empty - restoring content');
+                    if (originalSnippetContent[idx] && originalSnippetContent[idx].trim() !== '') {
+                        snippet.innerHTML = originalSnippetContent[idx];
+                        console.log('optimizeLeftColumnContent: Restored Article', idx + 1, 'from originalSnippetContent, length:', originalSnippetContent[idx].length);
+                    } else {
+                        console.warn('optimizeLeftColumnContent: originalSnippetContent[' + idx + '] is empty, trying data-full-content');
+                        // Last resort: Try to get from data-full-content
+                        const fullContent = section.getAttribute('data-full-content');
+                        if (fullContent) {
+                            try {
+                                const tempDiv = document.createElement('div');
+                                tempDiv.innerHTML = fullContent;
+                                const paragraphs = Array.from(tempDiv.querySelectorAll('p'));
+                                if (paragraphs.length > 0) {
+                                    // Use first 2 paragraphs as fallback
+                                    snippet.innerHTML = paragraphs.slice(0, 2).map(p => p.outerHTML).join('');
+                                    console.log('optimizeLeftColumnContent: Restored Article', idx + 1, 'from data-full-content, paragraphs:', paragraphs.length);
+                                } else {
+                                    console.error('optimizeLeftColumnContent: No paragraphs found in data-full-content for Article', idx + 1);
+                                }
+                            } catch (e) {
+                                console.error('optimizeLeftColumnContent: Error parsing data-full-content for Article', idx + 1, ':', e);
+                            }
+                        } else {
+                            console.error('optimizeLeftColumnContent: No data-full-content attribute found for Article', idx + 1);
+                        }
+                    }
+                    // Force reflow after restoring
+                    snippet.offsetHeight;
+                } else {
+                    console.log('optimizeLeftColumnContent: Article', idx + 1, 'has content, length:', currentContent.length);
+                }
+                // Force rendering for mobile and Safari (even if content was already there)
+                if (isMobile || isSafari) {
+                    snippet.style.visibility = 'hidden';
+                    snippet.offsetHeight;
+                    snippet.style.visibility = 'visible';
+                    snippet.offsetHeight;
+                    snippet.style.display = 'block';
+                    snippet.style.opacity = '1';
+                    // Force hardware acceleration
+                    snippet.style.transform = 'translateZ(0)';
+                    snippet.offsetHeight;
+                    snippet.style.transform = '';
+                    snippet.offsetHeight;
+                }
+            } else {
+                console.error('optimizeLeftColumnContent: No snippet element found for Article', idx + 1);
+            }
+        });
+        // Force a final reflow on the entire column
+        articleColLeft.offsetHeight;
         
         // Final verification: Ensure nothing is cut off
         articleColLeft.offsetHeight;
         const finalHeight = articleColLeft.scrollHeight;
         
-        if (finalHeight > maxContentHeight - 60) {
-            console.log(`optimizeLeftColumnContent: Column still overflowing (${finalHeight} > ${maxContentHeight - 60}), trimming from end...`);
+        // Only trim if we actually have significant overflow
+        // Don't trim if we're only slightly over - the content is more important than perfect fit
+        if (finalHeight > maxContentHeight) {
+            console.log(`optimizeLeftColumnContent: Column overflowing (${finalHeight} > ${maxContentHeight}), trimming from end...`);
             
             // Trim from the last article backwards until it fits
+            // BUT ensure we never completely empty an article - always keep at least 1 paragraph
             for (let sectionIndex = articleSections.length - 1; sectionIndex >= 0; sectionIndex--) {
                 const section = articleSections[sectionIndex];
                 const snippet = section.querySelector('.article-snippet');
                 if (!snippet) continue;
                 
                 const paragraphs = snippet.querySelectorAll('p');
-                if (paragraphs.length === 0) continue;
+                // CRITICAL: Don't trim if article only has 1 paragraph - preserve at least 1
+                if (paragraphs.length <= 1) {
+                    console.log('optimizeLeftColumnContent: Article', sectionIndex + 1, 'only has 1 paragraph, skipping trim');
+                    continue;
+                }
                 
-                // Remove paragraphs one by one from the end
+                // Remove paragraphs one by one from the end, but keep at least 1
                 let trimmedHTML = '';
                 for (let pIdx = 0; pIdx < paragraphs.length - 1; pIdx++) {
                     trimmedHTML += paragraphs[pIdx].outerHTML;
+                }
+                
+                // Ensure we're not setting to empty
+                if (trimmedHTML.trim() === '') {
+                    console.warn('optimizeLeftColumnContent: Trimmed HTML is empty for Article', sectionIndex + 1, '- skipping trim');
+                    continue;
                 }
                 
                 snippet.innerHTML = trimmedHTML;
                 articleColLeft.offsetHeight;
                 const testHeight = articleColLeft.scrollHeight;
                 
-                if (testHeight <= maxContentHeight - 60) {
+                if (testHeight <= maxContentHeight) {
+                    console.log('optimizeLeftColumnContent: Trimming complete, final height:', testHeight);
                     break; // It fits now, stop trimming
                 }
             }
+        } else {
+            console.log('optimizeLeftColumnContent: Column fits within limits, no trimming needed. Height:', finalHeight, 'max:', maxContentHeight);
         }
         
+        // CRITICAL: After trimming, ensure no article is completely empty
+        // If any article is empty, restore at least the first paragraph from original content
+        articleSections.forEach((section, idx) => {
+            const snippet = section.querySelector('.article-snippet');
+            if (snippet) {
+                const currentContent = snippet.innerHTML || '';
+                if (!currentContent || currentContent.trim() === '') {
+                    console.warn('optimizeLeftColumnContent: Article', idx + 1, 'is empty after optimization - restoring minimum content');
+                    // Restore at least first paragraph from original content
+                    if (originalSnippetContent[idx] && originalSnippetContent[idx].trim() !== '') {
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = originalSnippetContent[idx];
+                        const paragraphs = Array.from(tempDiv.querySelectorAll('p'));
+                        if (paragraphs.length > 0) {
+                            // Use at least the first paragraph
+                            snippet.innerHTML = paragraphs[0].outerHTML;
+                            console.log('optimizeLeftColumnContent: Restored Article', idx + 1, 'with first paragraph');
+                        } else {
+                            // Fallback: use original content as-is
+                            snippet.innerHTML = originalSnippetContent[idx];
+                            console.log('optimizeLeftColumnContent: Restored Article', idx + 1, 'with original content');
+                        }
+                        snippet.offsetHeight; // Force reflow
+                    } else {
+                        // Last resort: try data-full-content
+                        const fullContent = section.getAttribute('data-full-content');
+                        if (fullContent) {
+                            try {
+                                const tempDiv = document.createElement('div');
+                                tempDiv.innerHTML = fullContent;
+                                const paragraphs = Array.from(tempDiv.querySelectorAll('p'));
+                                if (paragraphs.length > 0) {
+                                    snippet.innerHTML = paragraphs[0].outerHTML;
+                                    console.log('optimizeLeftColumnContent: Restored Article', idx + 1, 'from data-full-content (first paragraph)');
+                                    snippet.offsetHeight;
+                                }
+                            } catch (e) {
+                                console.error('optimizeLeftColumnContent: Error restoring Article', idx + 1, ':', e);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
         // Fix widows (single words at end of line) for articles 2 and 3
-        fixWidowsInSnippets(articleSections);
+        // DISABLED: This function was causing content to disappear
+        // fixWidowsInSnippets(articleSections);
+        
+        // FINAL SAFEGUARD: One last check to ensure content is preserved
+        // This prevents content from being cleared by subsequent functions
+        articleSections.forEach((section, idx) => {
+            const snippet = section.querySelector('.article-snippet');
+            if (snippet) {
+                const finalContent = snippet.innerHTML || '';
+                if (!finalContent || finalContent.trim() === '') {
+                    console.error('optimizeLeftColumnContent: FINAL CHECK - Article', idx + 1, 'is empty! Restoring original content.');
+                    if (originalSnippetContent[idx] && originalSnippetContent[idx].trim() !== '') {
+                        snippet.innerHTML = originalSnippetContent[idx];
+                        snippet.offsetHeight;
+                    }
+                } else {
+                    console.log('optimizeLeftColumnContent: FINAL CHECK - Article', idx + 1, 'has content, length:', finalContent.length, 'preview:', finalContent.substring(0, 100));
+                    // Store the final content in a data attribute so we can restore it if something clears it
+                    snippet.setAttribute('data-optimized-content', finalContent);
+                }
+            }
+        });
+        
+        // Add a MutationObserver to detect if content is being modified after optimization
+        articleSections.forEach((section, idx) => {
+            const snippet = section.querySelector('.article-snippet');
+            if (snippet) {
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.type === 'childList' || mutation.type === 'characterData') {
+                            const currentContent = snippet.innerHTML || '';
+                            const savedContent = snippet.getAttribute('data-optimized-content');
+                            if (savedContent && currentContent !== savedContent && currentContent.length < savedContent.length * 0.5) {
+                                console.warn('optimizeLeftColumnContent: Content was modified for Article', idx + 1, '! Restoring saved content.');
+                                console.warn('Original length:', savedContent.length, 'Current length:', currentContent.length);
+                                snippet.innerHTML = savedContent;
+                                snippet.offsetHeight;
+                            }
+                        }
+                    });
+                });
+                observer.observe(snippet, { childList: true, subtree: true, characterData: true });
+                // Store observer so it can be disconnected later if needed
+                snippet._contentObserver = observer;
+            }
+        });
         
     } catch (error) {
         console.error('optimizeLeftColumnContent error:', error);
+        // Fallback: Restore original content if optimization failed (critical for mobile and Safari)
+        if (typeof originalSnippetContent !== 'undefined' && originalSnippetContent.length > 0) {
+            try {
+                const firstPage = document.querySelector('.newsletter-page');
+                if (firstPage) {
+                    const articleColLeft = firstPage.querySelector('.article-col-left');
+                    if (articleColLeft) {
+                        const articleSections = Array.from(articleColLeft.querySelectorAll('.article-section'));
+                        articleSections.forEach((section, idx) => {
+                            const snippet = section.querySelector('.article-snippet');
+                            if (snippet) {
+                                // Restore original content
+                                if (originalSnippetContent[idx]) {
+                                    snippet.innerHTML = originalSnippetContent[idx];
+                                } else {
+                                    // Last resort: Try data-full-content
+                                    const fullContent = section.getAttribute('data-full-content');
+                                    if (fullContent) {
+                                        const tempDiv = document.createElement('div');
+                                        tempDiv.innerHTML = fullContent;
+                                        const paragraphs = Array.from(tempDiv.querySelectorAll('p'));
+                                        if (paragraphs.length > 0) {
+                                            snippet.innerHTML = paragraphs.slice(0, 2).map(p => p.outerHTML).join('');
+                                        }
+                                    }
+                                }
+                                // Force reflow
+                                snippet.offsetHeight;
+                                // Force rendering for mobile
+                                const isMobile = window.innerWidth <= 768;
+                                if (isMobile) {
+                                    snippet.style.display = 'none';
+                                    snippet.offsetHeight;
+                                    snippet.style.display = '';
+                                    snippet.offsetHeight;
+                                }
+                            }
+                        });
+                    }
+                }
+            } catch (fallbackError) {
+                console.error('Error in fallback:', fallbackError);
+            }
+        }
         // Don't let this break the newsletter generation
     }
 }

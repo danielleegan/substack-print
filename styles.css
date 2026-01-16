@@ -814,6 +814,9 @@ header ~ p a {
     widows: 2 !important; /* Prevent single words at end of line - require at least 2 words */
     orphans: 2 !important; /* Prevent single words at start of line - require at least 2 words */
     margin-bottom: 8px;
+    display: block !important; /* Ensure Safari displays content */
+    visibility: visible !important; /* Ensure Safari displays content */
+    opacity: 1 !important; /* Ensure Safari displays content */
 }
 
 .article-image {
