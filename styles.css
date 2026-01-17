@@ -2658,16 +2658,15 @@ header ~ p a {
     }
     
     /* CRITICAL: Make Article 1 (.article-content-right) match Articles 2 & 3 (.article-snippet) exactly on mobile */
-    /* Since both compute to 13.6px but Article 1 looks larger, ensure ALL typography properties match */
+    /* Force both to use the exact same font-size - use 0.85em relative to a fixed base */
     .front-page .article-col-right,
-    .front-page .article-col-left,
-    .front-page .article-col-left .article-section {
+    .front-page .article-col-left {
         font-size: 16px !important; /* Explicit base font-size so 0.85em = 13.6px for both */
     }
     
-    /* Force both to match exactly - copy ALL properties from article-snippet to article-content-right */
+    /* Force article-content-right to match article-snippet exactly */
     .front-page .article-col-right .article-content-right {
-        font-size: 13.6px !important; /* Explicit pixel value to match computed size */
+        font-size: 0.85em !important; /* Use em relative to parent's 16px = 13.6px */
         line-height: 1.5 !important;
         font-weight: normal !important;
         letter-spacing: normal !important;
@@ -2677,9 +2676,18 @@ header ~ p a {
         overflow-wrap: break-word !important;
     }
     
+    /* Apply same font-size to all text content (p, span, etc.) but not headings */
+    .front-page .article-col-right .article-content-right p,
+    .front-page .article-col-right .article-content-right span:not(h1 span):not(h2 span):not(h3 span):not(h4 span):not(h5 span):not(h6 span),
+    .front-page .article-col-right .article-content-right li,
+    .front-page .article-col-right .article-content-right div:not(.article-title):not(.article-subtitle) {
+        font-size: inherit !important; /* Inherit 0.85em from parent */
+    }
+    
+    /* Ensure article-snippet also uses the same relative sizing */
     .front-page .article-col-left .article-snippet,
     .front-page .article-col-left .article-section .article-snippet {
-        font-size: 13.6px !important; /* Explicit pixel value to match computed size */
+        font-size: 0.85em !important; /* Use em relative to parent's 16px = 13.6px */
         line-height: 1.5 !important;
         font-weight: normal !important;
         letter-spacing: normal !important;
