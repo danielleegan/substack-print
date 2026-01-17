@@ -93,7 +93,8 @@ function updateMobileElements() {
 
 // PRE-PROCESSING STEP: Flatten footnotes before any newspaper styling or formatting
 // This function processes raw HTML content from RSS feeds to ensure footnotes are single-line
-function preprocessRSSContent(htmlContent) {
+// articleIndex: optional index of the article (0, 1, 2) to mark footnotes with their source article
+function preprocessRSSContent(htmlContent, articleIndex = null) {
     if (!htmlContent || typeof htmlContent !== 'string') {
         return htmlContent;
     }
@@ -136,6 +137,10 @@ function preprocessRSSContent(htmlContent) {
         const span = document.createElement('span');
         span.setAttribute('data-footnote-ref', num);
         span.classList.add('footnote-reference');
+        // Mark which article this footnote belongs to
+        if (articleIndex !== null) {
+            span.setAttribute('data-article-index', articleIndex.toString());
+        }
         span.textContent = text;
         
         // Replace the link with the span
@@ -156,6 +161,9 @@ function preprocessRSSContent(htmlContent) {
     ];
     
     const allLists = new Set();
+    const allFootnoteContainers = new Set();
+    
+    // First, collect all footnote-related elements
     footnoteSelectors.forEach(selector => {
         doc.querySelectorAll(selector).forEach(el => {
             // Check if this looks like a footnote list (contains numbered items)
@@ -163,12 +171,42 @@ function preprocessRSSContent(htmlContent) {
             if (items.length > 0) {
                 allLists.add(el);
             }
+            // Also collect any element with footnote classes/IDs (containers)
+            const hasFootnoteClass = el.classList.toString().toLowerCase().includes('footnote');
+            const hasFootnoteId = (el.id || '').toLowerCase().includes('footnote');
+            if (hasFootnoteClass || hasFootnoteId) {
+                allFootnoteContainers.add(el);
+            }
         });
     });
+    
+    // Mark all footnote containers with article index
+    if (articleIndex !== null) {
+        allFootnoteContainers.forEach(container => {
+            container.setAttribute('data-article-index', articleIndex.toString());
+        });
+    }
     
     // Process each footnote list
     allLists.forEach(list => {
         const listItems = Array.from(list.querySelectorAll('li'));
+        
+        // Mark the list container and its parent containers with article index if provided
+        if (articleIndex !== null) {
+            list.setAttribute('data-article-index', articleIndex.toString());
+            // Also mark parent containers that might be footnote containers
+            let parent = list.parentElement;
+            let depth = 0;
+            while (parent && parent !== doc.body && depth < 5) {
+                const parentClass = parent.classList.toString().toLowerCase();
+                const parentId = (parent.id || '').toLowerCase();
+                if (parentClass.includes('footnote') || parentId.includes('footnote')) {
+                    parent.setAttribute('data-article-index', articleIndex.toString());
+                }
+                parent = parent.parentElement;
+                depth++;
+            }
+        }
         
         listItems.forEach((li, index) => {
             // Extract footnote number
@@ -197,6 +235,11 @@ function preprocessRSSContent(htmlContent) {
             
             // Remove all newlines and normalize whitespace
             footnoteText = footnoteText.replace(/\n+/g, ' ').replace(/\r+/g, ' ').replace(/\s+/g, ' ').trim();
+            
+            // Mark list item with article index if provided
+            if (articleIndex !== null) {
+                li.setAttribute('data-article-index', articleIndex.toString());
+            }
             
             // Replace the entire list item content with flattened single-line format
             // Format: "N. Footnote text" (single line, no HTML tags, no newlines)
@@ -320,8 +363,9 @@ function parseRSSFeed(xmlText) {
         
         // MANDATORY PRE-PROCESSING: Flatten footnotes before any other processing
         // This happens BEFORE newspaper styling or formatting
+        // Pass article index to mark footnotes with their source article
         if (content) {
-            content = preprocessRSSContent(content);
+            content = preprocessRSSContent(content, index);
         }
         
         // Only store what we actually use
@@ -330,7 +374,7 @@ function parseRSSFeed(xmlText) {
             content,
             isFeatured: index === 0 // First article is featured
         });
-    }
+            }
     
     return {
         articles,
@@ -370,20 +414,20 @@ async function fetchArticleContent(url) {
         const proxyURL = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
         const response = await fetchWithTimeout(proxyURL, {}, 3000);
         if (response.ok) {
-            const data = await response.json();
-            if (data.contents) {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(data.contents, 'text/html');
-                const articleContent = doc.querySelector('.post-content, .body, article, .entry-content');
-                if (articleContent) {
-                    return articleContent.innerHTML;
-                }
+        const data = await response.json();
+        if (data.contents) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(data.contents, 'text/html');
+            const articleContent = doc.querySelector('.post-content, .body, article, .entry-content');
+            if (articleContent) {
+                return articleContent.innerHTML;
             }
+        }
         }
     } catch (e) {
         // Error already logged if needed
     }
-    return null;
+        return null;
 }
 
 // MANDATORY PRE-PASS: Normalize footnotes before any rendering
@@ -694,8 +738,8 @@ function cleanHTMLContent(html) {
         if (text.match(/^\d+\.?\s/) && text.length < 500) {
             const match = text.match(/^(\d+)\.?\s*(.+)$/);
             if (match) {
-                // Flatten it
-                el.textContent = match[1] + '. ' + match[2].trim().replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ');
+                    // Flatten it
+                    el.textContent = match[1] + '. ' + match[2].trim().replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ');
             }
         }
     });
@@ -801,7 +845,7 @@ function formatYear(date) {
     // Handle Date objects
     if (date instanceof Date) {
         if (!isNaN(date.getTime())) {
-            return date.getFullYear();
+    return date.getFullYear();
         }
         return new Date().getFullYear();
     }
@@ -1142,20 +1186,20 @@ async function fetchWithTimeout(url, options = {}, timeout = 5000) {
 async function fetchRSSFeed(rssURL) {
     // Method 1: Try Cloudflare Worker proxy first (fastest, same network)
     if (CLOUDFLARE_PROXY_URL && CLOUDFLARE_PROXY_URL !== 'YOUR_CLOUDFLARE_WORKER_URL_HERE') {
-        try {
+    try {
             const proxyURL = `${CLOUDFLARE_PROXY_URL}?url=${encodeURIComponent(rssURL)}`;
             console.log('Trying Cloudflare Worker first:', proxyURL);
             const response = await fetchWithTimeout(proxyURL, {}, 3000);
-            if (response.ok) {
-                const text = await response.text();
+        if (response.ok) {
+            const text = await response.text();
                 if (text && text.trim().length > 0) {
                     console.log('Cloudflare Worker succeeded!');
-                    return text;
+            return text;
                 }
             } else {
                 console.log('Cloudflare Worker returned non-OK status:', response.status);
-            }
-        } catch (e) {
+        }
+    } catch (e) {
             console.log('Cloudflare Worker failed, trying fallbacks:', e.message);
         }
     } else {
@@ -1216,7 +1260,7 @@ async function fetchCachedPublication(url) {
             // Using jsDelivr CDN for GitHub raw files (faster than raw.githubusercontent.com)
             const cacheURL = 'https://cdn.jsdelivr.net/gh/danielleegan/substack-print@main/cache/rawandferal.json';
             const response = await fetchWithTimeout(cacheURL, {}, 2000);
-            if (response.ok) {
+        if (response.ok) {
                 const cachedData = await response.json();
                 // Check if cache is fresh (less than 1 hour old)
                 const cacheAge = Date.now() - (cachedData.timestamp || 0);
@@ -1226,11 +1270,11 @@ async function fetchCachedPublication(url) {
                 } else {
                     console.log('Cache is stale, fetching fresh RSS');
                 }
-            }
-        } catch (e) {
+        }
+    } catch (e) {
             // Cache fetch failed silently, continue to RSS (don't show error)
             console.log('Cache not available, using RSS feed');
-        }
+    }
     }
     return null;
 }
@@ -1273,18 +1317,18 @@ async function processSubstackURL(url) {
         // If cache didn't work, fetch from RSS
         if (!feedData) {
             loadingEl.textContent = 'Fetching RSS feed...';
-            
-            // Get RSS feed URL
-            const rssURL = getRSSFeedURL(url);
-            if (!rssURL) {
-                throw new Error('Invalid Substack URL');
-            }
-            
+        
+        // Get RSS feed URL
+        const rssURL = getRSSFeedURL(url);
+        if (!rssURL) {
+            throw new Error('Invalid Substack URL');
+        }
+        
             // Fetch RSS feed with fallback methods (this may take time)
             loadingEl.textContent = 'Getting your articles for ya, this may take a couple minutes!';
-            const rssText = await fetchRSSFeed(rssURL);
-            
-            // Parse RSS feed
+        const rssText = await fetchRSSFeed(rssURL);
+        
+        // Parse RSS feed
             loadingEl.textContent = 'Processing articles...';
             feedData = parseRSSFeed(rssText);
         }
@@ -1342,10 +1386,7 @@ async function processSubstackURL(url) {
                         }
                         
                         try {
-                            // Only optimize on desktop - mobile keeps original content
-                            if (!isMobile()) {
-                                optimizeLeftColumnContent(); // Optimize left column to fit maximum content
-                            }
+                            optimizeLeftColumnContent(); // Optimize left column to fit maximum content
                         } catch (e) {
                             console.error('Error in optimizeLeftColumnContent:', e);
                         }
@@ -1361,34 +1402,9 @@ async function processSubstackURL(url) {
             }
             
             try {
-                // Only optimize on desktop - mobile keeps original content
-                if (!isMobile()) {
-                    optimizeLeftColumnContent(); // Optimize left column to fit maximum content
-                }
+                optimizeLeftColumnContent(); // Optimize left column to fit maximum content
             } catch (e) {
                 console.error('Error in optimizeLeftColumnContent:', e);
-            }
-            
-            // Ensure vertical divider extends full height
-            try {
-                const firstPage = document.querySelector('.newsletter-page');
-                if (firstPage) {
-                    const articleColumns = firstPage.querySelector('.article-columns');
-                    const newsletterContent = firstPage.querySelector('.newsletter-content');
-                    if (articleColumns && newsletterContent) {
-                        // Set height to match available space (content area height)
-                        const contentHeight = newsletterContent.offsetHeight;
-                        if (contentHeight > 0) {
-                            articleColumns.style.minHeight = contentHeight + 'px';
-                            const articleColLeft = articleColumns.querySelector('.article-col-left');
-                            if (articleColLeft) {
-                                articleColLeft.style.minHeight = contentHeight + 'px';
-                            }
-                        }
-                    }
-                }
-            } catch (e) {
-                console.error('Error setting divider height:', e);
             }
             
             // Run splitPagesDynamically after a delay to ensure optimizeLeftColumnContent has finished
@@ -1398,21 +1414,31 @@ async function processSubstackURL(url) {
                     splitPagesDynamically();
                     applyModeToPages(); // Apply mode after pages are split
                     updatePageVisibility(); // Hide pages 2+ on mobile
-                    // Safari-specific: Force remove inline styles on desktop
+                    // Safari-specific: Force remove inline styles on desktop immediately and after delay
                     if (!isMobile()) {
+                        // Remove inline styles immediately
                         const pages = document.querySelectorAll('.newsletter-page, .body-pages');
-                        pages.forEach(page => page.style.removeProperty('display'));
+                        pages.forEach(page => {
+                            page.style.removeProperty('display'); // Remove inline style to let CSS handle it
+                        });
                         // Also remove after a delay in case JavaScript sets them again
                         setTimeout(() => {
-                            pages.forEach(page => page.style.removeProperty('display'));
+                            pages.forEach(page => {
+                                page.style.removeProperty('display');
+                            });
                         }, 200);
                     }
                     updateArticlePageReferences(limitedArticles);
                     adjustAllTitleSizes();
+                    // DISABLED: preventOrphanedHeadings() causes titles to appear in wrong places when CSS columns reflow
+                    // preventOrphanedHeadings(); // Prevent headings from being orphaned at bottom of columns
                     preventOrphanedImageCaptions(); // Prevent image captions from being orphaned
                     markFootnotesSections(); // Mark footnotes sections for spacing
                     
+                    // DISABLED: preventOrphanedHeadings() causes titles to appear in wrong places when CSS columns reflow
+                    // Retry orphaned heading detection after a short delay to catch any that were missed
                     setTimeout(() => {
+                        // preventOrphanedHeadings();
                         addPageNumbers(); // Add page numbers to pages 2+
                     }, 100);
                 } catch (e) {
@@ -1502,6 +1528,228 @@ async function saveAsImage() {
         console.error('Error saving as image:', error);
         alert('Error saving as image. Please use your browser\'s print function (Ctrl+P / Cmd+P) or take a screenshot.');
     }
+}
+
+// Safari print workaround: Split CSS columns into 3 separate divs for print
+// Safari doesn't support CSS columns in print mode, so we need to manually split content
+function setupSafariPrintWorkaround() {
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    if (!isSafari) return; // Only needed for Safari
+    
+    // Store original content for restoration
+    const originalContents = new Map();
+    
+    // Function to split content into 3 columns for print using height-based balancing
+    // This matches how CSS columns balance content by height
+    function splitContentForPrint(container) {
+        if (container.dataset.safariPrintSplit === 'true') {
+            return; // Already split
+        }
+        
+        const originalHTML = container.innerHTML;
+        originalContents.set(container, originalHTML);
+        container.dataset.safariPrintSplit = 'true';
+        
+        // Get all direct element children (not text nodes)
+        const children = Array.from(container.childNodes).filter(node => 
+            node.nodeType === Node.ELEMENT_NODE
+        );
+        
+        if (children.length === 0) return;
+        
+        // Calculate actual column width from container
+        // Column width = (container width - 2 gaps of 0.25in) / 3
+        const containerWidth = container.offsetWidth || container.getBoundingClientRect().width || 800;
+        const gapSize = 96 * 0.25; // 0.25in in pixels (96 DPI)
+        const columnWidth = (containerWidth - (2 * gapSize)) / 3;
+        
+        // Create a temporary measurement container matching print column styles exactly
+        const tempContainer = document.createElement('div');
+        tempContainer.className = 'safari-print-column';
+        tempContainer.style.position = 'absolute';
+        tempContainer.style.left = '-9999px';
+        tempContainer.style.top = '-9999px';
+        tempContainer.style.width = `${columnWidth}px`;
+        tempContainer.style.visibility = 'hidden';
+        tempContainer.style.display = 'block';
+        tempContainer.style.boxSizing = 'border-box';
+        // Copy relevant styles from container
+        const computedStyle = window.getComputedStyle(container);
+        tempContainer.style.fontFamily = computedStyle.fontFamily;
+        tempContainer.style.fontSize = computedStyle.fontSize;
+        tempContainer.style.lineHeight = computedStyle.lineHeight;
+        document.body.appendChild(tempContainer);
+        
+        // Measure heights of all elements sequentially
+        const elementHeights = [];
+        children.forEach((child, index) => {
+            const clone = child.cloneNode(true);
+            // Ensure clone has same styles by copying computed styles if needed
+            tempContainer.appendChild(clone);
+            // Force multiple reflows for accurate measurements
+            void tempContainer.offsetHeight;
+            void clone.offsetHeight;
+            const rect = clone.getBoundingClientRect();
+            const height = rect.height || clone.offsetHeight || clone.scrollHeight || 0;
+            elementHeights.push({ index, height, element: child });
+            tempContainer.removeChild(clone);
+        });
+        
+        document.body.removeChild(tempContainer);
+        
+        // CSS column-fill: balance algorithm simulation
+        // CSS columns fill sequentially but try to balance heights
+        // The key insight: CSS columns process elements in order and try to balance
+        // We'll process in original order (not sorted) but balance heights
+        
+        // Restore original order for processing
+        elementHeights.sort((a, b) => a.index - b.index);
+        
+        const columns = [[], [], []]; // Arrays of {index, element} for each column
+        const columnHeights = [0, 0, 0]; // Total height of each column
+        
+        // Process elements in order (like CSS columns do)
+        elementHeights.forEach(({ index, height, element }) => {
+            // Find the column with minimum height (balanced fill)
+            let targetCol = 0;
+            let minHeight = columnHeights[0];
+            
+            for (let col = 1; col < 3; col++) {
+                if (columnHeights[col] < minHeight) {
+                    minHeight = columnHeights[col];
+                    targetCol = col;
+                }
+            }
+            
+            columns[targetCol].push({ index, element });
+            columnHeights[targetCol] += height;
+        });
+        
+        // Clone children BEFORE clearing innerHTML (so we can still access them)
+        const clonedChildren = children.map(child => child.cloneNode(true));
+        
+        // Create 3 column containers
+        container.innerHTML = '';
+        container.style.display = 'block';
+        container.style.columnCount = '1';
+        container.style.columnGap = '0';
+        container.style.width = '100%';
+        container.style.overflow = 'hidden';
+        
+        // Build columns in order, but distribute elements according to height balancing
+        // We need to maintain the original order within each column, so sort by original index
+        for (let col = 0; col < 3; col++) {
+            const columnDiv = document.createElement('div');
+            columnDiv.className = 'safari-print-column';
+            
+            // Get elements for this column, sorted by original index to maintain order
+            const columnElements = columns[col]
+                .sort((a, b) => a.index - b.index)
+                .map(({ element }) => element);
+            
+            // Find corresponding cloned elements and append them
+            columnElements.forEach(element => {
+                const originalIndex = children.indexOf(element);
+                if (originalIndex !== -1 && clonedChildren[originalIndex]) {
+                    columnDiv.appendChild(clonedChildren[originalIndex]);
+                }
+            });
+            
+            // Ensure the column has content before appending
+            if (columnDiv.children.length > 0) {
+                container.appendChild(columnDiv);
+            }
+        }
+    }
+    
+    // Function to restore original content
+    function restoreContent(container) {
+        if (container.dataset.safariPrintSplit === 'true' && originalContents.has(container)) {
+            container.innerHTML = originalContents.get(container);
+            container.removeAttribute('data-safari-print-split');
+            container.style.display = '';
+            container.style.gap = '';
+            container.style.columnCount = '';
+            container.style.columnGap = '';
+            originalContents.delete(container);
+        }
+    }
+    
+    // Function to handle print preparation
+    function prepareForPrint() {
+        const containers = document.querySelectorAll('.article-columns-three-css');
+        containers.forEach(container => {
+            splitContentForPrint(container);
+        });
+    }
+    
+    // Function to restore after print
+    function restoreAfterPrint() {
+        const containers = document.querySelectorAll('.article-columns-three-css');
+        containers.forEach(container => {
+            restoreContent(container);
+        });
+    }
+    
+    // Handle beforeprint event
+    window.addEventListener('beforeprint', prepareForPrint);
+    
+    // Handle afterprint event to restore
+    window.addEventListener('afterprint', restoreAfterPrint);
+    
+    // Also handle media query change (when print preview opens)
+    const mediaQuery = window.matchMedia('print');
+    if (mediaQuery.addEventListener) {
+        mediaQuery.addEventListener('change', (e) => {
+            if (e.matches) {
+                prepareForPrint();
+            } else {
+                restoreAfterPrint();
+            }
+        });
+    } else {
+        // Fallback for older browsers
+        mediaQuery.addListener((e) => {
+            if (e.matches) {
+                prepareForPrint();
+            } else {
+                restoreAfterPrint();
+            }
+        });
+    }
+    
+    // Also check periodically when in print preview (Safari sometimes doesn't fire events reliably)
+    let printCheckInterval = null;
+    window.addEventListener('beforeprint', () => {
+        prepareForPrint();
+        // Set up a check interval as backup
+        printCheckInterval = setInterval(() => {
+            if (window.matchMedia('print').matches) {
+                prepareForPrint();
+            } else {
+                if (printCheckInterval) {
+                    clearInterval(printCheckInterval);
+                    printCheckInterval = null;
+                }
+                restoreAfterPrint();
+            }
+        }, 100);
+    });
+    
+    window.addEventListener('afterprint', () => {
+        if (printCheckInterval) {
+            clearInterval(printCheckInterval);
+            printCheckInterval = null;
+        }
+        restoreAfterPrint();
+    });
+}
+
+// Initialize Safari print workaround when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupSafariPrintWorkaround);
+} else {
+    setupSafariPrintWorkaround();
 }
 
 // Form submission handler
@@ -1599,14 +1847,23 @@ function adjustTitleFontSize(titleElement) {
 // Trim Article 1 content on page 1 to fit within available space
 function trimArticle1ToFit() {
     try {
-        const firstPage = document.querySelector('.newsletter-page');
-    if (!firstPage) return;
+    const firstPage = document.querySelector('.newsletter-page');
+    if (!firstPage) {
+        console.log('trimArticle1ToFit: No first page found');
+        return;
+    }
     
     const article1Content = firstPage.querySelector('.article-col-right .article-content-right');
-    if (!article1Content) return;
+    if (!article1Content) {
+        console.log('trimArticle1ToFit: No article-content-right found in article-col-right');
+        return;
+    }
     
     const articleColRight = firstPage.querySelector('.article-col-right');
-    if (!articleColRight) return;
+    if (!articleColRight) {
+        console.log('trimArticle1ToFit: No article-col-right found');
+        return;
+    }
     
     // Get the max height available - account for page padding (0.25in = 18px at 72dpi, but use actual computed)
     const newsletterContent = firstPage.querySelector('.newsletter-content');
@@ -1665,6 +1922,9 @@ function trimArticle1ToFit() {
         const actualHeight = continued.offsetHeight + parseFloat(contStyle.marginTop) + parseFloat(contStyle.marginBottom);
         // Use the larger of actual height + 15px padding, or our conservative estimate
         continuedHeight = Math.max(actualHeight + 15, 45);
+        console.log('trimArticle1ToFit: continued element height:', actualHeight, 'reserved:', continuedHeight);
+    } else {
+        console.log('trimArticle1ToFit: continued element not found, reserving 45px');
     }
     usedHeight += continuedHeight;
     
@@ -1677,9 +1937,13 @@ function trimArticle1ToFit() {
     // Get the actual rendered height of the content
     const actualContentHeight = article1Content.scrollHeight;
     
+    console.log('trimArticle1ToFit: maxContentHeight:', maxContentHeight, 'usedHeight:', usedHeight, 'availableHeight:', availableHeight);
+    console.log('trimArticle1ToFit: article1Content.scrollHeight:', actualContentHeight);
+    
     // Check if content actually overflows - add a small tolerance to prevent unnecessary trimming
     // Only trim if content is significantly overflowing (more than 10px) to prevent jumping
     if (actualContentHeight > availableHeight + 10) {
+        console.log('trimArticle1ToFit: Content overflows by', (actualContentHeight - availableHeight).toFixed(0), 'px, trimming...');
         
         // Content overflows - need to trim it
         const elements = Array.from(article1Content.children);
@@ -1707,6 +1971,8 @@ function trimArticle1ToFit() {
             // Force reflow
             tempContainer.offsetHeight;
             const testHeight = tempContainer.scrollHeight;
+            
+            console.log('trimArticle1ToFit: Element', i, 'testHeight:', testHeight, 'availableHeight:', availableHeight);
             
             if (testHeight <= availableHeight) {
                 // This element fits
@@ -1767,6 +2033,7 @@ function trimArticle1ToFit() {
             }
         }
         
+        console.log('trimArticle1ToFit: Fitting content length:', fittingContent.length, 'Remaining content length:', remainingContent.length);
         
         // Update the content
         article1Content.innerHTML = fittingContent;
@@ -1779,9 +2046,11 @@ function trimArticle1ToFit() {
             const page2Content = page2.querySelector('.article-columns-three-css');
             if (page2Content) {
                 page2Content.innerHTML = remainingContent + page2Content.innerHTML;
+                console.log('trimArticle1ToFit: Added remaining content to page 2');
             }
         }
     } else {
+        console.log('trimArticle1ToFit: Content fits, no trimming needed');
         // Force a final reflow to ensure layout is stable
         articleColRight.offsetHeight;
         article1Content.offsetHeight;
@@ -1792,11 +2061,69 @@ function trimArticle1ToFit() {
     }
 }
 
+// Helper function to ensure snippet has at least a few visual lines of content
+// Returns HTML with at least ~2-3 lines of text (roughly 100-150 words or ~15-20 words per line estimate)
+function ensureMinimumSnippetContent(content, minWords = 30) {
+    if (!content || content.trim().length === 0) return '';
+    
+    // Parse the content
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = content;
+    const paragraphs = Array.from(tempDiv.querySelectorAll('p'));
+    
+    if (paragraphs.length === 0) {
+        // No paragraphs, try to extract text directly
+        const text = tempDiv.textContent || '';
+        const words = text.trim().split(/\s+/);
+        if (words.length >= minWords) {
+            return content;
+        }
+        // Return at least first minWords words
+        const trimmedWords = words.slice(0, minWords);
+        return `<p>${trimmedWords.join(' ')}</p>`;
+    }
+    
+    // Count total words
+    let totalWords = 0;
+    let selectedParagraphs = [];
+    
+    for (const p of paragraphs) {
+        const text = p.textContent || '';
+        const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+        totalWords += words.length;
+        selectedParagraphs.push(p);
+        
+        if (totalWords >= minWords) {
+            break;
+        }
+    }
+    
+    // If we have enough words, return the selected paragraphs
+    if (totalWords >= minWords) {
+        return selectedParagraphs.map(p => p.outerHTML).join('');
+    }
+    
+    // Otherwise, ensure we have at least minWords from the first paragraph
+    const firstParagraph = paragraphs[0];
+    const firstText = firstParagraph.textContent || '';
+    const firstWords = firstText.trim().split(/\s+/).filter(w => w.length > 0);
+    
+    if (firstWords.length >= minWords) {
+        // Return first paragraph with just minWords
+        const trimmedWords = firstWords.slice(0, minWords);
+        return `<p>${trimmedWords.join(' ')}</p>`;
+    } else {
+        // Return first paragraph as-is (it's short)
+        return firstParagraph.outerHTML;
+    }
+}
+
 // Optimize left column content to fit as much as possible based on available space
 // Balanced approach: Article 2 and Article 3 get approximately equal space
 function optimizeLeftColumnContent() {
-    // Store original content at function scope for fallback
-    let originalSnippetContent = [];
+    // Store original snippet content as fallback (declare outside try for catch access)
+    const originalSnippetContent = new Map();
+    let articleSections = [];
     
     try {
         const firstPage = document.querySelector('.newsletter-page');
@@ -1811,13 +2138,8 @@ function optimizeLeftColumnContent() {
             return;
         }
         
-        // On mobile, skip optimization entirely - keep original content
-        // This function should not be called on mobile at all, but if it is, just return immediately
-        const isMobileDevice = window.innerWidth <= 768;
-        if (isMobileDevice) {
-            console.log('optimizeLeftColumnContent: Mobile detected - skipping optimization');
-            return; // Skip optimization on mobile - keep original content
-        }
+        // Detect Safari for aggressive reflows and delayed checks
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         
         // Get available height for left column - measure directly on the page
         const pagePadding = parseFloat(getComputedStyle(firstPage).paddingTop) + parseFloat(getComputedStyle(firstPage).paddingBottom);
@@ -1827,7 +2149,7 @@ function optimizeLeftColumnContent() {
         const maxContentHeight = pageHeight - pagePadding - mastheadHeight;
         
         // Get all article sections
-        const articleSections = Array.from(articleColLeft.querySelectorAll('.article-section'));
+        articleSections = Array.from(articleColLeft.querySelectorAll('.article-section'));
         
         if (articleSections.length === 0) {
             console.log('optimizeLeftColumnContent: No article sections found');
@@ -1848,29 +2170,18 @@ function optimizeLeftColumnContent() {
         });
         
         // Step 1: Calculate total fixed height (titles, images, captions, "See Page X") for all articles
-        // Store original content before clearing (Safari fallback)
-        // CRITICAL: Double-check we're not on mobile before clearing content
-        const isMobileCheck = window.innerWidth <= 768;
-        if (isMobileCheck) {
-            console.log('optimizeLeftColumnContent: Mobile detected during content clearing - aborting');
-            return; // Safety check - should never reach here if mobile check at top worked
-        }
-        
-        originalSnippetContent = [];
+        // Store original snippet content as fallback before clearing
         articleSections.forEach((section, idx) => {
             const snippet = section.querySelector('.article-snippet');
             if (snippet) {
-                originalSnippetContent[idx] = snippet.innerHTML; // Store original content
-                console.log('optimizeLeftColumnContent: Stored original content for article', idx + 1, 'length:', originalSnippetContent[idx] ? originalSnippetContent[idx].length : 0);
-                // Only clear if we have stored content - safety check
-                if (!originalSnippetContent[idx] || originalSnippetContent[idx].trim() === '') {
-                    console.warn('optimizeLeftColumnContent: Snippet', idx, 'is empty - skipping clear');
-                    return; // Don't clear if already empty
+                const originalContent = snippet.innerHTML;
+                originalSnippetContent.set(section, originalContent); // Store original content
+                if (!originalContent || originalContent.trim().length === 0) {
+                    console.warn(`optimizeLeftColumnContent: Article ${idx + 2} original snippet is empty!`);
+                } else {
+                    console.log(`optimizeLeftColumnContent: Article ${idx + 2} original snippet has ${snippet.querySelectorAll('p').length} paragraphs`);
                 }
                 snippet.innerHTML = ''; // Clear to measure fixed elements only
-            } else {
-                originalSnippetContent[idx] = '';
-                console.warn('optimizeLeftColumnContent: No snippet found for article', idx + 1);
             }
         });
         
@@ -1883,6 +2194,11 @@ function optimizeLeftColumnContent() {
                 titleBar.offsetHeight;
             }
         });
+        
+        // Measure actual height of "See Page X" elements for each article
+        // This will be used for dynamic margins instead of fixed values
+        const article3Continued = articleSections.length >= 2 ? articleSections[articleSections.length - 1].querySelector('.article-continued') : null;
+        const article3ContinuedHeight = article3Continued ? (article3Continued.offsetHeight || article3Continued.getBoundingClientRect().height || 24) : 24;
         
         // Measure total fixed height (all sections with empty snippets)
         articleColLeft.offsetHeight; // Force reflow again before measuring
@@ -1899,28 +2215,14 @@ function optimizeLeftColumnContent() {
         
         const availableSnippetHeight = maxContentHeight - totalFixedHeight - 60; // 60px safety margin to prevent cutoff
         
-        console.log('optimizeLeftColumnContent: totalFixedHeight:', totalFixedHeight, 'maxContentHeight:', maxContentHeight, 'availableSnippetHeight:', availableSnippetHeight);
-        
-        // If fixed elements take up too much space, we need to adjust our approach
-        if (totalFixedHeight >= maxContentHeight - 100) {
-            console.warn('optimizeLeftColumnContent: Fixed elements take up too much space!', totalFixedHeight, 'out of', maxContentHeight, '- this will limit content significantly');
-        }
-        
         // Step 3: Allocate approximately equal space to each article's snippet
         const snippetHeightPerArticle = Math.floor(availableSnippetHeight / articleSections.length);
         
         // Helper function to fill a snippet, measuring directly on the page
-        // Can break paragraphs by visual lines for better fitting
-        // remainingHeight: maximum height available for this article's content
-        function fillSnippet(sectionIndex, paragraphs, remainingHeight) {
+        function fillSnippet(sectionIndex, paragraphs) {
             const section = articleSections[sectionIndex];
             const snippet = section.querySelector('.article-snippet');
             if (!snippet) return '';
-            
-            // Get current height before adding content to this snippet
-            articleColLeft.offsetHeight; // Force reflow
-            const heightBeforeSnippet = articleColLeft.scrollHeight;
-            const maxHeightForThisSnippet = heightBeforeSnippet + (remainingHeight || availableSnippetHeight);
             
             let fittingHTML = '';
             
@@ -1931,61 +2233,42 @@ function optimizeLeftColumnContent() {
                 
                 // Update snippet directly on page
                 snippet.innerHTML = testHTML;
-                // Force reflow - critical for Safari to render content
-                snippet.offsetHeight;
-                articleColLeft.offsetHeight;
+                articleColLeft.offsetHeight; // Force reflow
                 
                 // Measure total column height directly on page
                 const currentHeight = articleColLeft.scrollHeight;
                 
-                // Check if it fits - must not exceed maxHeightForThisSnippet
-                if (currentHeight <= maxHeightForThisSnippet) {
+                // Check if it fits (with safety margin)
+                if (currentHeight <= maxContentHeight - 60) {
                     fittingHTML = testHTML;
                 } else {
                     // Revert to last fitting HTML
                     snippet.innerHTML = fittingHTML;
-                    snippet.offsetHeight;
-                    articleColLeft.offsetHeight;
-                    const baseHeightForParagraph = articleColLeft.scrollHeight;
                     
-                    // Try breaking paragraph by visual lines for better fitting
-                    // Use binary search approach: find the maximum text that fits
+                    // Try splitting paragraph by words
                     const text = paragraph.textContent;
                     const words = text.split(/\s+/);
                     
-                    // Binary search for the maximum number of words that fit
-                    let left = 0;
-                    let right = words.length;
-                    let bestFit = 0;
-                    
-                    while (left < right) {
-                        const mid = Math.floor((left + right) / 2);
-                        const testWords = words.slice(0, mid);
+                    let fittingWords = [];
+                    for (let j = 0; j < words.length; j++) {
+                        const testWords = [...fittingWords, words[j]];
                         const testText = testWords.join(' ');
                         const wordTestHTML = fittingHTML + `<p>${testText}</p>`;
                         
                         snippet.innerHTML = wordTestHTML;
-                        snippet.offsetHeight;
                         articleColLeft.offsetHeight;
                         const wordTestHeight = articleColLeft.scrollHeight;
                         
-                        if (wordTestHeight <= maxHeightForThisSnippet) {
-                            // This fits, try more
-                            bestFit = mid;
-                            left = mid + 1;
+                        if (wordTestHeight <= maxContentHeight - 60) {
+                            fittingWords.push(words[j]);
                         } else {
-                            // This doesn't fit, try less
-                            right = mid;
+                            break;
                         }
                     }
                     
-                    // Restore to best fit
-                    if (bestFit > 0) {
-                        const fittingWords = words.slice(0, bestFit);
+                    if (fittingWords.length > 0) {
                         fittingHTML += `<p>${fittingWords.join(' ')}</p>`;
                         snippet.innerHTML = fittingHTML;
-                        snippet.offsetHeight;
-                        articleColLeft.offsetHeight;
                     }
                     break;
                 }
@@ -1994,300 +2277,718 @@ function optimizeLeftColumnContent() {
             return fittingHTML;
         }
         
-        // Step 4: Fill articles with content - balanced approach
-        // Allocate space more evenly between articles
+        // Step 4: Fill articles with content, alternating to balance space approximately equally
+        // Parse all article content first
         const articleParagraphs = [];
         articleSections.forEach((section, idx) => {
             const fullContent = section.getAttribute('data-full-content');
-            if (fullContent) {
+            if (fullContent && fullContent.trim().length > 0) {
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = fullContent;
                 const paragraphs = Array.from(tempDiv.querySelectorAll('p'));
+                if (paragraphs.length === 0) {
+                    console.warn(`optimizeLeftColumnContent: Article ${idx + 2} has data-full-content but no paragraphs found`);
+                }
                 articleParagraphs.push(paragraphs);
             } else {
-                // Fallback: If no data-full-content, try to get from original stored content
-                if (originalSnippetContent[idx]) {
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = originalSnippetContent[idx];
-                    const paragraphs = Array.from(tempDiv.querySelectorAll('p'));
-                    articleParagraphs.push(paragraphs);
-                } else {
-                    articleParagraphs.push([]);
-                }
+                console.warn(`optimizeLeftColumnContent: Article ${idx + 2} has no data-full-content attribute`);
+                articleParagraphs.push([]);
             }
         });
         
-        // Step 4: Fill articles with balanced content - original working approach
-        // Use round-robin to alternate between articles, adding paragraphs until space is filled
+        // Early exit if no paragraphs found - keep original content
+        const totalParagraphs = articleParagraphs.reduce((sum, paras) => sum + paras.length, 0);
+        if (totalParagraphs === 0) {
+            console.warn('optimizeLeftColumnContent: No paragraphs found in any article, keeping original content');
+            // Restore original content
+            articleSections.forEach((section) => {
+                const snippet = section.querySelector('.article-snippet');
+                if (snippet) {
+                    const originalContent = originalSnippetContent.get(section);
+                    if (originalContent) {
+                        snippet.innerHTML = originalContent;
+                        // Force reflow for Safari
+                        if (isSafari) {
+                            snippet.offsetHeight;
+                            articleColLeft.offsetHeight;
+                            void snippet.offsetHeight;
+                        }
+                    }
+                }
+            });
+            return; // Exit early
+        }
+        
+        // Safari-specific: Log paragraph counts for debugging
+        if (isSafari) {
+            console.log(`optimizeLeftColumnContent: Safari - Article paragraphs: ${articleParagraphs.map((p, i) => `Article ${i + 2}: ${p.length}`).join(', ')}`);
+        }
+        
+        // Track current paragraph index for each article
         const paragraphIndices = new Array(articleSections.length).fill(0);
         let currentArticleIndex = 0;
         let hasMoreContent = true;
         let iterationsWithoutProgress = 0;
-        let iterationCount = 0;
-        const maxIterations = 1000;
+        const maxIterations = 1000; // Safety limit to prevent infinite loops
         
-        // Verify we have paragraphs to work with
-        let totalParagraphs = 0;
-        articleParagraphs.forEach((paras, idx) => {
-            totalParagraphs += paras ? paras.length : 0;
-            console.log('optimizeLeftColumnContent: Article', idx + 1, 'has', paras ? paras.length : 0, 'paragraphs');
-        });
-        console.log('optimizeLeftColumnContent: Total paragraphs:', totalParagraphs);
-        
-        if (totalParagraphs === 0) {
-            console.warn('optimizeLeftColumnContent: No paragraphs found - restoring original content');
-            // No paragraphs to optimize, restore original content
-            articleSections.forEach((section, idx) => {
-                const snippet = section.querySelector('.article-snippet');
-                if (snippet && originalSnippetContent[idx] && originalSnippetContent[idx].trim() !== '') {
-                    snippet.innerHTML = originalSnippetContent[idx];
-                    snippet.offsetHeight;
-                }
-            });
-            articleColLeft.offsetHeight;
-            return; // Exit early if no content to optimize
-        }
-        
-        // Fill each article sequentially, accounting for cumulative height
-        // This ensures article 3 doesn't overflow when article 2 takes up space
-        console.log('optimizeLeftColumnContent: Using fillSnippet approach for each article (sequential)');
-        
-        articleSections.forEach((section, idx) => {
+        // Ensure all snippets are cleared before starting the optimization loop
+        articleSections.forEach((section) => {
             const snippet = section.querySelector('.article-snippet');
-            if (!snippet || !articleParagraphs[idx] || articleParagraphs[idx].length === 0) {
-                // Restore original if no content
-                if (snippet && originalSnippetContent[idx] && originalSnippetContent[idx].trim() !== '') {
-                    snippet.innerHTML = originalSnippetContent[idx];
-                    snippet.offsetHeight;
-                }
-                return;
+            if (snippet) {
+                snippet.innerHTML = ''; // Ensure clean start
             }
+        });
+        
+        // Alternate between articles, adding one paragraph at a time
+        // But if an article has room and more paragraphs, keep trying that article
+        for (let iteration = 0; iteration < maxIterations && hasMoreContent; iteration++) {
+            hasMoreContent = false;
+            let progressMade = false;
+            let stayOnSameArticle = false; // Flag to continue with same article if there's room
             
-            // Measure current height before filling this article
-            articleColLeft.offsetHeight; // Force reflow
-            const heightBeforeThisArticle = articleColLeft.scrollHeight;
-            const remainingHeight = maxContentHeight - heightBeforeThisArticle - 60; // 60px safety margin
+            // Try to add a paragraph to the current article
+            const section = articleSections[currentArticleIndex];
+            const snippet = section.querySelector('.article-snippet');
+            const paragraphs = articleParagraphs[currentArticleIndex];
+            const currentIndex = paragraphIndices[currentArticleIndex];
             
-            console.log('optimizeLeftColumnContent: Article', idx + 1, 'height before:', heightBeforeThisArticle, 'remaining:', remainingHeight, 'maxContentHeight:', maxContentHeight);
-            
-            // Use fillSnippet to fill this article, but with updated height constraints
-            const filledHTML = fillSnippet(idx, articleParagraphs[idx], remainingHeight);
-            
-            if (filledHTML && filledHTML.trim() !== '') {
-                snippet.innerHTML = filledHTML;
-                snippet.offsetHeight;
-                articleColLeft.offsetHeight; // Force reflow after setting content
+            if (snippet && paragraphs && currentIndex < paragraphs.length) {
+                const paragraph = paragraphs[currentIndex];
+                const paragraphHTML = paragraph.outerHTML;
+                const currentHTML = snippet.innerHTML.trim(); // Trim to avoid whitespace issues
+                const testHTML = currentHTML + paragraphHTML;
                 
-                // Verify it still fits after setting
-                const heightAfter = articleColLeft.scrollHeight;
-                console.log('optimizeLeftColumnContent: Article', idx + 1, 'filled with', filledHTML.split('<p>').length - 1, 'paragraphs, height after:', heightAfter, 'maxContentHeight:', maxContentHeight);
+                // Update snippet
+                snippet.innerHTML = testHTML;
+                // Safari needs multiple reflows
+                if (isSafari) {
+                    snippet.offsetHeight;
+                    articleColLeft.offsetHeight;
+                    void snippet.offsetHeight;
+                } else {
+                articleColLeft.offsetHeight; // Force reflow
+                }
                 
-                // If it overflows, trim it back
-                if (heightAfter > maxContentHeight) {
-                    console.warn('optimizeLeftColumnContent: Article', idx + 1, 'overflowed after setting! Height:', heightAfter, 'max:', maxContentHeight, '- trimming back');
-                    // Trim by removing last paragraph or words until it fits
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = filledHTML;
-                    const paras = Array.from(tempDiv.querySelectorAll('p'));
+                // Measure total column height
+                // Safari needs extra reflows for accurate measurements
+                if (isSafari) {
+                    void articleColLeft.offsetHeight;
+                    void articleColLeft.scrollHeight;
+                    void snippet.offsetHeight;
+                }
+                const currentHeight = articleColLeft.scrollHeight;
+                
+                // For article 3 (last article), we need extra margin for "See Page X" element
+                // Use the actual measured height plus a small buffer
+                const isLastArticle = currentArticleIndex === articleSections.length - 1;
+                // Safari: Use slightly smaller margins to be more aggressive about filling space
+                const heightMargin = isLastArticle 
+                    ? (article3ContinuedHeight + (isSafari ? 5 : 10)) 
+                    : (isSafari ? 30 : 50); // Dynamic margin for article 3's "See Page X"
+                
+                if (currentHeight <= maxContentHeight - heightMargin) {
+                    // It fits, keep it
+                    paragraphIndices[currentArticleIndex]++;
+                    progressMade = true;
+                } else {
+                    // Doesn't fit, revert and try splitting
+                    snippet.innerHTML = currentHTML;
+                    articleColLeft.offsetHeight; // Force reflow after revert
                     
-                    for (let p = paras.length - 1; p >= 0; p--) {
-                        const testHTML = paras.slice(0, p).map(p => p.outerHTML).join('');
-                        snippet.innerHTML = testHTML;
-                        snippet.offsetHeight;
-                        articleColLeft.offsetHeight;
-                        const testHeight = articleColLeft.scrollHeight;
+                    const text = paragraph.textContent.trim();
+                    if (!text) {
+                        // Empty paragraph, skip it
+                        paragraphIndices[currentArticleIndex]++;
+                        progressMade = true;
+                        // Continue with next paragraph from same article if there's room
+                        continue;
+                    }
+                    
+                    const words = text.split(/\s+/).filter(w => w.length > 0);
+                    if (words.length === 0) {
+                        paragraphIndices[currentArticleIndex]++;
+                        progressMade = true;
+                        // Continue with next paragraph from same article if there's room
+                        continue;
+                    }
+                    
+                    let fittingWords = [];
+                    
+                    for (let j = 0; j < words.length; j++) {
+                        // Build test paragraph with words up to and including current word
+                        const testWords = [...fittingWords, words[j]];
+                        const testText = testWords.join(' ');
+                        const wordTestHTML = currentHTML + `<p>${testText}</p>`;
                         
-                        if (testHeight <= maxContentHeight) {
-                            console.log('optimizeLeftColumnContent: Article', idx + 1, 'trimmed to', p, 'paragraphs, height:', testHeight);
+                        // Test if this fits
+                        snippet.innerHTML = wordTestHTML;
+                        // Safari needs extra reflows for accurate measurements
+                        if (isSafari) {
+                            void articleColLeft.offsetHeight;
+                            void articleColLeft.scrollHeight;
+                            void snippet.offsetHeight;
+                        } else {
+                        articleColLeft.offsetHeight;
+                        }
+                        const wordTestHeight = articleColLeft.scrollHeight;
+                        
+                        // For article 3 (last article), we need extra margin for "See Page X" element
+                        const isLastArticleForWord = currentArticleIndex === articleSections.length - 1;
+                        // Safari: Use slightly smaller margins to be more aggressive
+                        const wordHeightMargin = isLastArticleForWord 
+                            ? (article3ContinuedHeight + (isSafari ? 5 : 10)) 
+                            : (isSafari ? 40 : 60); // Dynamic margin for article 3's "See Page X"
+                        
+                        if (wordTestHeight <= maxContentHeight - wordHeightMargin) {
+                            fittingWords.push(words[j]);
+                            // Restore snippet to currentHTML for next test
+                            snippet.innerHTML = currentHTML;
+                        } else {
+                            // This word doesn't fit, stop here
+                            snippet.innerHTML = currentHTML; // Restore to safe state
                             break;
                         }
                     }
-                }
-            } else {
-                // If fillSnippet returned empty, restore original
-                if (originalSnippetContent[idx] && originalSnippetContent[idx].trim() !== '') {
-                    snippet.innerHTML = originalSnippetContent[idx];
-                    snippet.offsetHeight;
-                    console.log('optimizeLeftColumnContent: Article', idx + 1, 'fillSnippet returned empty, restored original');
+                    
+                    // Only add if we have fitting words and it's not empty
+                    if (fittingWords.length > 0) {
+                        const newParagraph = `<p>${fittingWords.join(' ')}</p>`;
+                        // Double-check that currentHTML doesn't already contain this exact paragraph
+                        const normalizedCurrent = currentHTML.replace(/\s+/g, ' ').trim();
+                        const normalizedNew = newParagraph.replace(/\s+/g, ' ').trim();
+                        
+                        if (!normalizedCurrent.includes(normalizedNew)) {
+                            snippet.innerHTML = currentHTML + newParagraph;
+                            paragraphIndices[currentArticleIndex]++;
+                            progressMade = true;
+                        } else {
+                            // Already exists - this shouldn't happen, but skip if it does
+                            snippet.innerHTML = currentHTML; // Keep current state
+                        paragraphIndices[currentArticleIndex]++;
+                        progressMade = true;
+                    }
+                    } else {
+                        // No words fit from this paragraph - check if there's still room in column
+                        snippet.innerHTML = currentHTML;
+                        articleColLeft.offsetHeight;
+                        const remainingHeight = articleColLeft.scrollHeight;
+                        
+                        // Mark this paragraph as done (we tried, it doesn't fit)
+                        paragraphIndices[currentArticleIndex]++;
+                        progressMade = true;
+                        
+                        // If we're still under the limit (with some margin) and this article has more paragraphs,
+                        // stay on this article to try the next paragraph
+                        const hasMoreParagraphs = paragraphIndices[currentArticleIndex] < paragraphs.length;
+                        // For article 3 (last article), we need extra margin for "See Page X" element
+                        const isLastArticleForStay = currentArticleIndex === articleSections.length - 1;
+                        // Safari: Use smaller margins to be more aggressive about filling space
+                        const stayHeightMargin = isLastArticleForStay 
+                            ? (article3ContinuedHeight + (isSafari ? 5 : 10)) 
+                            : (isSafari ? 20 : 30); // Dynamic margin for article 3's "See Page X"
+                        // Use a smaller margin to be more aggressive about filling space, but respect article 3's margin
+                        if (hasMoreParagraphs && remainingHeight < maxContentHeight - stayHeightMargin) {
+                            // Still room and more paragraphs - stay on this article to fill it up
+                            stayOnSameArticle = true;
+                            console.log(`optimizeLeftColumnContent: Staying on article ${currentArticleIndex + 2}, remainingHeight: ${remainingHeight}, maxContentHeight: ${maxContentHeight}, margin: ${stayHeightMargin}`);
+                        }
+                        // Otherwise, move to next article at end of loop
+                    }
+                    // This article might still have more paragraphs if we didn't hit the limit
                 }
             }
-        });
+            
+            // Check if any articles have more content
+            for (let i = 0; i < articleSections.length; i++) {
+                if (paragraphIndices[i] < articleParagraphs[i].length) {
+                    hasMoreContent = true;
+                    break;
+                }
+            }
+            
+            // Track progress
+            if (progressMade) {
+                iterationsWithoutProgress = 0;
+            } else {
+                iterationsWithoutProgress++;
+                // Safari: Allow more iterations without progress since measurements might be inconsistent
+                // If we've gone through all articles multiple times without progress, stop
+                const maxIterationsWithoutProgress = isSafari ? (articleSections.length * 4) : (articleSections.length * 2);
+                if (iterationsWithoutProgress >= maxIterationsWithoutProgress) {
+                    break;
+                }
+            }
+            
+            // Move to next article (round-robin), unless we should stay on same article
+            if (!stayOnSameArticle) {
+            currentArticleIndex = (currentArticleIndex + 1) % articleSections.length;
+            } else {
+                // Reset flag for next iteration
+                stayOnSameArticle = false;
+            }
+        }
         
-        // Force final reflow
-        articleColLeft.offsetHeight;
-        
-        // CRITICAL: Ensure all articles have content
-        articleSections.forEach((section, idx) => {
-            const snippet = section.querySelector('.article-snippet');
-            if (snippet) {
-                const currentContent = snippet.innerHTML || '';
-                if (!currentContent || currentContent.trim() === '') {
-                    console.warn('optimizeLeftColumnContent: Article', idx + 1, 'is empty after fillSnippet - restoring original');
-                    if (originalSnippetContent[idx] && originalSnippetContent[idx].trim() !== '') {
-                        snippet.innerHTML = originalSnippetContent[idx];
-                        snippet.offsetHeight;
+        const maxIterationsWithoutProgress = isSafari ? (articleSections.length * 4) : (articleSections.length * 2);
+        if (iterationsWithoutProgress >= maxIterationsWithoutProgress) {
+            console.log('optimizeLeftColumnContent: Stopped due to no progress');
+            // Log snippet states when loop stops
+            articleSections.forEach((section, idx) => {
+                const snippet = section.querySelector('.article-snippet');
+                if (snippet) {
+                    const paragraphs = snippet.querySelectorAll('p');
+                    const snippetText = snippet.textContent || snippet.innerHTML.trim();
+                    console.log(`optimizeLeftColumnContent: Article ${idx + 2} after loop stop - paragraphs: ${paragraphs.length}, text length: ${snippetText.length}`);
+                    
+                    // If Safari and snippet is empty, restore immediately
+                    if (isSafari && (paragraphs.length === 0 || snippetText.length === 0)) {
+                        console.warn(`optimizeLeftColumnContent: Safari - Article ${idx + 2} empty after loop, restoring immediately`);
+                        const originalContent = originalSnippetContent.get(section);
+                        if (originalContent && originalContent.trim().length > 0) {
+                            const minContent = ensureMinimumSnippetContent(originalContent);
+                            snippet.innerHTML = minContent;
+                            snippet.offsetHeight;
+                            articleColLeft.offsetHeight;
+                            void snippet.offsetHeight;
+                        }
                     }
                 }
+            });
+            
+            // Safari-specific: If all snippets are empty after loop, restore all original content
+            if (isSafari) {
+                let allEmpty = true;
+                articleSections.forEach((section) => {
+                    const snippet = section.querySelector('.article-snippet');
+                    if (snippet) {
+                        const paragraphs = snippet.querySelectorAll('p');
+                        const snippetText = snippet.textContent || snippet.innerHTML.trim();
+                        if (paragraphs.length > 0 && snippetText.length > 0) {
+                            allEmpty = false;
+                        }
+                    }
+                });
+                
+                if (allEmpty) {
+                    console.error('optimizeLeftColumnContent: Safari - All snippets empty after optimization loop, restoring all original content');
+                    articleSections.forEach((section, idx) => {
+                        const snippet = section.querySelector('.article-snippet');
+                        if (snippet) {
+                            const originalContent = originalSnippetContent.get(section);
+                            if (originalContent && originalContent.trim().length > 0) {
+                                snippet.innerHTML = originalContent;
+                                snippet.offsetHeight;
+                                articleColLeft.offsetHeight;
+                                void snippet.offsetHeight;
+                            }
+                        }
+                    });
+                }
             }
-        });
+        }
         
-        // Force final reflow
-        articleColLeft.offsetHeight;
-        
-        // Final check: Ensure all snippets have content (critical for mobile and Safari)
-        // ALWAYS restore content if empty, regardless of browser
-        const isMobile = window.innerWidth <= 768;
-        const isSafari = navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome');
-        
-        console.log('optimizeLeftColumnContent: Final check - articleSections.length:', articleSections.length, 'originalSnippetContent.length:', originalSnippetContent.length);
-        
+        // Immediate check after optimization loop: Restore any empty snippets
+        // Safari needs more aggressive restoration
         articleSections.forEach((section, idx) => {
             const snippet = section.querySelector('.article-snippet');
             if (snippet) {
-                // CRITICAL: Always check and restore if empty
-                const currentContent = snippet.innerHTML || '';
-                console.log('optimizeLeftColumnContent: Article', idx + 1, 'current content length:', currentContent.length);
-                
-                if (!currentContent || currentContent.trim() === '') {
-                    console.log('optimizeLeftColumnContent: Snippet', idx, '(Article', idx + 1, ') is empty - restoring content');
-                    if (originalSnippetContent[idx] && originalSnippetContent[idx].trim() !== '') {
-                        snippet.innerHTML = originalSnippetContent[idx];
-                        console.log('optimizeLeftColumnContent: Restored Article', idx + 1, 'from originalSnippetContent, length:', originalSnippetContent[idx].length);
+                const paragraphs = snippet.querySelectorAll('p');
+                const snippetText = snippet.textContent || snippet.innerHTML.trim();
+                if (paragraphs.length === 0 || !snippetText || snippetText.length === 0) {
+                    // Snippet is empty - restore with minimum content (few visual lines)
+                    // For Safari, use full original content instead of minimum
+                    const originalContent = originalSnippetContent.get(section);
+                    if (originalContent && originalContent.trim().length > 0) {
+                        console.warn(`optimizeLeftColumnContent: Article ${idx + 2} snippet empty after optimization, restoring`);
+                        // Safari: use full original content; others: use minimum
+                        const contentToRestore = isSafari ? originalContent : ensureMinimumSnippetContent(originalContent);
+                        snippet.innerHTML = contentToRestore;
+                        // Force reflow for Safari
+                        if (isSafari) {
+                            snippet.offsetHeight;
+                            articleColLeft.offsetHeight;
+                            void snippet.offsetHeight;
+                        }
                     } else {
-                        console.warn('optimizeLeftColumnContent: originalSnippetContent[' + idx + '] is empty, trying data-full-content');
-                        // Last resort: Try to get from data-full-content
+                        // Try to get from data-full-content
                         const fullContent = section.getAttribute('data-full-content');
                         if (fullContent) {
-                            try {
+                            // For Safari, try to extract at least first 2 paragraphs; others: use minimum
+                            if (isSafari) {
                                 const tempDiv = document.createElement('div');
                                 tempDiv.innerHTML = fullContent;
                                 const paragraphs = Array.from(tempDiv.querySelectorAll('p'));
                                 if (paragraphs.length > 0) {
-                                    // Use first 2 paragraphs as fallback
-                                    snippet.innerHTML = paragraphs.slice(0, 2).map(p => p.outerHTML).join('');
-                                    console.log('optimizeLeftColumnContent: Restored Article', idx + 1, 'from data-full-content, paragraphs:', paragraphs.length);
+                                    const firstFew = paragraphs.slice(0, Math.min(2, paragraphs.length));
+                                    snippet.innerHTML = firstFew.map(p => p.outerHTML).join('');
                                 } else {
-                                    console.error('optimizeLeftColumnContent: No paragraphs found in data-full-content for Article', idx + 1);
+                                    snippet.innerHTML = ensureMinimumSnippetContent(fullContent);
                                 }
-                            } catch (e) {
-                                console.error('optimizeLeftColumnContent: Error parsing data-full-content for Article', idx + 1, ':', e);
+                            } else {
+                                const minContent = ensureMinimumSnippetContent(fullContent);
+                                if (minContent) {
+                                    snippet.innerHTML = minContent;
+                                }
                             }
-                        } else {
-                            console.error('optimizeLeftColumnContent: No data-full-content attribute found for Article', idx + 1);
+                            // Force reflow for Safari
+                            if (isSafari) {
+                                snippet.offsetHeight;
+                                articleColLeft.offsetHeight;
+                                void snippet.offsetHeight;
+                            }
                         }
                     }
-                    // Force reflow after restoring
+                } else if (isSafari) {
+                    // Safari: Even if content exists, force a reflow to ensure it's rendered
                     snippet.offsetHeight;
-                } else {
-                    console.log('optimizeLeftColumnContent: Article', idx + 1, 'has content, length:', currentContent.length);
+                    articleColLeft.offsetHeight;
                 }
-                // Force rendering for mobile and Safari (even if content was already there)
-                if (isMobile || isSafari) {
-                    snippet.style.visibility = 'hidden';
-                    snippet.offsetHeight;
-                    snippet.style.visibility = 'visible';
-                    snippet.offsetHeight;
-                    snippet.style.display = 'block';
-                    snippet.style.opacity = '1';
-                    // Force hardware acceleration
-                    snippet.style.transform = 'translateZ(0)';
-                    snippet.offsetHeight;
-                    snippet.style.transform = '';
-                    snippet.offsetHeight;
-                }
-            } else {
-                console.error('optimizeLeftColumnContent: No snippet element found for Article', idx + 1);
             }
         });
-        // Force a final reflow on the entire column
-        articleColLeft.offsetHeight;
+        
+        // Safari-specific: If snippets have minimal content but there's still room, try to add more
+        if (isSafari) {
+            articleColLeft.offsetHeight;
+            void articleColLeft.scrollHeight;
+            const currentHeight = articleColLeft.scrollHeight;
+            const hasRoom = currentHeight < maxContentHeight - 100; // 100px buffer
+            
+            if (hasRoom) {
+                console.log(`optimizeLeftColumnContent: Safari - Column has room (${currentHeight} < ${maxContentHeight - 100}), checking for more content`);
+                
+                // Try to add more paragraphs to each article if they're minimal
+                articleSections.forEach((section, idx) => {
+                    const snippet = section.querySelector('.article-snippet');
+                    if (!snippet) return;
+                    
+                    const currentParagraphs = snippet.querySelectorAll('p');
+                    const currentText = snippet.textContent || '';
+                    
+                    // If snippet has very few paragraphs (1-2) or short text, try to add more
+                    if (currentParagraphs.length <= 2 || currentText.length < 200) {
+                        const paragraphs = articleParagraphs[idx] || [];
+                        const currentIndex = paragraphIndices[idx] || 0;
+                        
+                        if (currentIndex < paragraphs.length) {
+                            // Try adding a few more paragraphs
+                            const paragraphsToAdd = paragraphs.slice(currentIndex, currentIndex + 2);
+                            const additionalHTML = paragraphsToAdd.map(p => p.outerHTML).join('');
+                            const testHTML = snippet.innerHTML + additionalHTML;
+                            
+                            snippet.innerHTML = testHTML;
+                            // Force multiple reflows for Safari
+                            void snippet.offsetHeight;
+                            void articleColLeft.offsetHeight;
+                            void articleColLeft.scrollHeight;
+                            
+                            const testHeight = articleColLeft.scrollHeight;
+                            const isLastArticle = idx === articleSections.length - 1;
+                            const testMargin = isLastArticle ? (article3ContinuedHeight + 5) : 30;
+                            
+                            if (testHeight <= maxContentHeight - testMargin) {
+                                // It fits! Keep it
+                                paragraphIndices[idx] = Math.min(currentIndex + 2, paragraphs.length);
+                                void snippet.offsetHeight;
+                                void articleColLeft.offsetHeight;
+                                console.log(`optimizeLeftColumnContent: Safari - Added more content to article ${idx + 2}`);
+                            } else {
+                                // Doesn't fit, revert
+                                snippet.innerHTML = snippet.innerHTML.replace(additionalHTML, '');
+                                void articleColLeft.offsetHeight;
+                            }
+                        }
+                    }
+                });
+            }
+        }
         
         // Final verification: Ensure nothing is cut off
         articleColLeft.offsetHeight;
         const finalHeight = articleColLeft.scrollHeight;
         
-        // Only trim if we actually have significant overflow
-        // Don't trim if we're only slightly over - the content is more important than perfect fit
-        if (finalHeight > maxContentHeight) {
-            console.log(`optimizeLeftColumnContent: Column overflowing (${finalHeight} > ${maxContentHeight}), trimming from end...`);
+        // CRITICAL CHECK: Before trimming, verify all snippets have ACTUAL text content (not just empty paragraphs)
+        articleSections.forEach((section, idx) => {
+            const snippet = section.querySelector('.article-snippet');
+            if (snippet) {
+                // Filter out empty paragraphs (only whitespace)
+                const allParagraphs = Array.from(snippet.querySelectorAll('p'));
+                const nonEmptyParagraphs = allParagraphs.filter(p => {
+                    const text = p.textContent || p.innerText || '';
+                    return text.trim().length > 0;
+                });
+                
+                // Remove empty paragraphs from DOM
+                allParagraphs.forEach(p => {
+                    const text = p.textContent || p.innerText || '';
+                    if (text.trim().length === 0) {
+                        p.remove();
+                    }
+                });
+                
+                const snippetText = (snippet.textContent || snippet.innerHTML.trim()).replace(/\s+/g, ' ').trim();
+                const hasActualContent = snippetText && snippetText.length > 10; // At least 10 characters of actual text
+                
+                if (nonEmptyParagraphs.length === 0 || !hasActualContent) {
+                    console.error(`optimizeLeftColumnContent: PRE-TRIM CHECK - Article ${idx + 2} snippet has no actual text content (${nonEmptyParagraphs.length} non-empty paragraphs, ${snippetText.length} chars)! Restoring immediately.`);
+                    const originalContent = originalSnippetContent.get(section);
+                    if (originalContent && originalContent.trim().length > 0) {
+                        const minContent = ensureMinimumSnippetContent(originalContent);
+                        snippet.innerHTML = minContent;
+                        // Remove any empty paragraphs from restored content
+                        const restoredParagraphs = Array.from(snippet.querySelectorAll('p'));
+                        restoredParagraphs.forEach(p => {
+                            const text = p.textContent || p.innerText || '';
+                            if (text.trim().length === 0) {
+                                p.remove();
+                            }
+                        });
+                        console.log(`optimizeLeftColumnContent: Article ${idx + 2} restored from original content before trim`);
+                    } else {
+                        const fullContent = section.getAttribute('data-full-content');
+                        if (fullContent) {
+                            const minContent = ensureMinimumSnippetContent(fullContent);
+                            if (minContent) {
+                                snippet.innerHTML = minContent;
+                                // Remove any empty paragraphs from restored content
+                                const restoredParagraphs = Array.from(snippet.querySelectorAll('p'));
+                                restoredParagraphs.forEach(p => {
+                                    const text = p.textContent || p.innerText || '';
+                                    if (text.trim().length === 0) {
+                                        p.remove();
+                                    }
+                                });
+                                console.log(`optimizeLeftColumnContent: Article ${idx + 2} restored from data-full-content before trim`);
+                            }
+                        }
+                    }
+                } else {
+                    console.log(`optimizeLeftColumnContent: PRE-TRIM - Article ${idx + 2} has ${nonEmptyParagraphs.length} non-empty paragraphs, ${snippetText.length} chars`);
+                }
+            }
+        });
+        
+        // For article 3 (last article), we need extra margin for "See Page X" element
+        // Re-measure article 3's "See Page X" height now that content is filled (more accurate)
+        const article3Section = articleSections[articleSections.length - 1];
+        const article3ContinuedFinal = article3Section ? article3Section.querySelector('.article-continued') : null;
+        const article3ContinuedHeightFinal = article3ContinuedFinal ? (article3ContinuedFinal.offsetHeight || article3ContinuedFinal.getBoundingClientRect().height || 30) : 30;
+        
+        // Use dynamic margin based on actual "See Page X" height
+        const trimMargin = article3ContinuedHeightFinal + 15; // Dynamic margin with buffer to account for article 3's "See Page X"
+        const trimThreshold = maxContentHeight - trimMargin;
+        
+        // Also check if article 3's "See Page X" would be cut off
+        // Get the position of article 3's "See Page X" element
+        let article3ContinuedBottom = 0;
+        if (article3ContinuedFinal) {
+            const rect = article3ContinuedFinal.getBoundingClientRect();
+            const articleColLeftRect = articleColLeft.getBoundingClientRect();
+            article3ContinuedBottom = rect.bottom - articleColLeftRect.top;
+        }
+        
+        if (finalHeight > trimThreshold || (article3ContinuedFinal && article3ContinuedBottom > maxContentHeight)) {
+            console.log(`optimizeLeftColumnContent: Column still overflowing (${finalHeight} > ${trimThreshold}) or article 3 "See Page X" at ${article3ContinuedBottom}px would be cut off, trimming from end...`);
             
             // Trim from the last article backwards until it fits
-            // BUT ensure we never completely empty an article - always keep at least 1 paragraph
+            // IMPORTANT: Never leave a snippet empty - always ensure minimum content
+            // But prioritize article 3's "See Page X" visibility - be more aggressive about trimming article 2
             for (let sectionIndex = articleSections.length - 1; sectionIndex >= 0; sectionIndex--) {
                 const section = articleSections[sectionIndex];
                 const snippet = section.querySelector('.article-snippet');
                 if (!snippet) continue;
                 
                 const paragraphs = snippet.querySelectorAll('p');
-                // CRITICAL: Don't trim if article only has 1 paragraph - preserve at least 1
-                if (paragraphs.length <= 1) {
-                    console.log('optimizeLeftColumnContent: Article', sectionIndex + 1, 'only has 1 paragraph, skipping trim');
-                    continue;
-                }
+                // For article 3, never trim if we have 1 or fewer paragraphs - ensure minimum content
+                // For article 2, be more aggressive - allow trimming to 1 paragraph if needed for article 3
+                const isArticle3 = sectionIndex === articleSections.length - 1;
+                if (paragraphs.length <= 1 && isArticle3) continue; // Protect article 3 minimum
+                // For article 2, we'll allow trimming even if it means going down to minimum content
                 
-                // Remove paragraphs one by one from the end, but keep at least 1
+                // Remove paragraphs one by one from the end, but always keep at least minimum content
                 let trimmedHTML = '';
                 for (let pIdx = 0; pIdx < paragraphs.length - 1; pIdx++) {
                     trimmedHTML += paragraphs[pIdx].outerHTML;
                 }
                 
-                // Ensure we're not setting to empty
-                if (trimmedHTML.trim() === '') {
-                    console.warn('optimizeLeftColumnContent: Trimmed HTML is empty for Article', sectionIndex + 1, '- skipping trim');
-                    continue;
+                // Ensure we're keeping at least 1 paragraph
+                if (trimmedHTML.trim().length === 0 && paragraphs.length > 0) {
+                    // Keep the first paragraph as minimum
+                    trimmedHTML = paragraphs[0].outerHTML;
+                }
+                
+                // Before setting, ensure trimmedHTML has content
+                if (!trimmedHTML || trimmedHTML.trim().length === 0) {
+                    console.warn(`optimizeLeftColumnContent: Trimmed HTML is empty for article ${sectionIndex + 2}, skipping trim`);
+                    continue; // Skip this article, don't make it empty
                 }
                 
                 snippet.innerHTML = trimmedHTML;
                 articleColLeft.offsetHeight;
                 const testHeight = articleColLeft.scrollHeight;
                 
-                if (testHeight <= maxContentHeight) {
-                    console.log('optimizeLeftColumnContent: Trimming complete, final height:', testHeight);
+                // Verify snippet still has content after trimming
+                const remainingParagraphs = snippet.querySelectorAll('p');
+                if (remainingParagraphs.length === 0) {
+                    console.error(`optimizeLeftColumnContent: Trimming left article ${sectionIndex + 2} empty! Restoring immediately.`);
+                    // Restore with minimum content immediately
+                    const originalContent = originalSnippetContent.get(section);
+                    if (originalContent) {
+                        const minContent = ensureMinimumSnippetContent(originalContent);
+                        snippet.innerHTML = minContent;
+                    }
+                    continue; // Skip this article
+                }
+                
+                // Use the same margin for trimming check
+                if (testHeight <= trimThreshold) {
                     break; // It fits now, stop trimming
                 }
+                
+                // Safety check: If we've trimmed to 1 paragraph and it still doesn't fit, stop trimming this article
+                if (remainingParagraphs.length <= 1) {
+                    continue; // Move to next article
+                }
             }
-        } else {
-            console.log('optimizeLeftColumnContent: Column fits within limits, no trimming needed. Height:', finalHeight, 'max:', maxContentHeight);
         }
         
-        // CRITICAL: After trimming, ensure no article is completely empty
-        // If any article is empty, restore at least the first paragraph from original content
+        // Final check: Verify article 3's "See Page X" is actually visible
+        // If it's still cut off, trim more aggressively from article 2
+        articleColLeft.offsetHeight; // Force reflow
+        const finalCheckHeight = articleColLeft.scrollHeight;
+        const article3SectionFinal = articleSections[articleSections.length - 1];
+        const article3ContinuedFinalCheck = article3SectionFinal ? article3SectionFinal.querySelector('.article-continued') : null;
+        
+        if (article3ContinuedFinalCheck) {
+            const rect = article3ContinuedFinalCheck.getBoundingClientRect();
+            const articleColLeftRect = articleColLeft.getBoundingClientRect();
+            const article3ContinuedBottomFinal = rect.bottom - articleColLeftRect.top;
+            
+            // If article 3's "See Page X" is below the max height, trim more aggressively
+            if (article3ContinuedBottomFinal > maxContentHeight - 5) {
+                console.log(`optimizeLeftColumnContent: Article 3 "See Page X" still cut off at ${article3ContinuedBottomFinal}px (max: ${maxContentHeight}), trimming more aggressively...`);
+                
+                // Trim from article 2 (index 0) more aggressively
+                const article2Section = articleSections[0];
+                const article2Snippet = article2Section ? article2Section.querySelector('.article-snippet') : null;
+                
+                if (article2Snippet) {
+                    const article2Paragraphs = article2Snippet.querySelectorAll('p');
+                    if (article2Paragraphs.length > 1) {
+                        // Remove paragraphs from the end until article 3's "See Page X" is visible
+                        for (let pIdx = article2Paragraphs.length - 1; pIdx >= 1; pIdx--) {
+                            // Remove last paragraph
+                            article2Paragraphs[pIdx].remove();
+                            articleColLeft.offsetHeight; // Force reflow
+                            
+                            // Check if article 3's "See Page X" is now visible
+                            const newRect = article3ContinuedFinalCheck.getBoundingClientRect();
+                            const newBottom = newRect.bottom - articleColLeftRect.top;
+                            
+                            if (newBottom <= maxContentHeight - 5) {
+                                console.log(`optimizeLeftColumnContent: Article 3 "See Page X" now visible at ${newBottom}px`);
+                                break; // It's visible now, stop trimming
+                            }
+                        }
+                    } else if (article2Paragraphs.length === 1) {
+                        // Only one paragraph left - try splitting it by words
+                        const lastParagraph = article2Paragraphs[0];
+                        const text = lastParagraph.textContent || '';
+                        const words = text.split(/\s+/).filter(w => w.length > 0);
+                        
+                        if (words.length > 10) {
+                            // Remove words from the end until article 3's "See Page X" is visible
+                            for (let wordIdx = words.length - 1; wordIdx >= 10; wordIdx--) {
+                                const newText = words.slice(0, wordIdx).join(' ');
+                                lastParagraph.textContent = newText;
+                                articleColLeft.offsetHeight; // Force reflow
+                                
+                                // Check if article 3's "See Page X" is now visible
+                                const newRect = article3ContinuedFinalCheck.getBoundingClientRect();
+                                const newBottom = newRect.bottom - articleColLeftRect.top;
+                                
+                                if (newBottom <= maxContentHeight - 5) {
+                                    console.log(`optimizeLeftColumnContent: Article 3 "See Page X" now visible after word trimming at ${newBottom}px`);
+                                    break; // It's visible now, stop trimming
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Check after trimming: Restore any snippets that became empty
+        // Safari needs aggressive restoration and forced reflows
+        
         articleSections.forEach((section, idx) => {
             const snippet = section.querySelector('.article-snippet');
             if (snippet) {
-                const currentContent = snippet.innerHTML || '';
-                if (!currentContent || currentContent.trim() === '') {
-                    console.warn('optimizeLeftColumnContent: Article', idx + 1, 'is empty after optimization - restoring minimum content');
-                    // Restore at least first paragraph from original content
-                    if (originalSnippetContent[idx] && originalSnippetContent[idx].trim() !== '') {
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = originalSnippetContent[idx];
-                        const paragraphs = Array.from(tempDiv.querySelectorAll('p'));
-                        if (paragraphs.length > 0) {
-                            // Use at least the first paragraph
-                            snippet.innerHTML = paragraphs[0].outerHTML;
-                            console.log('optimizeLeftColumnContent: Restored Article', idx + 1, 'with first paragraph');
-                        } else {
-                            // Fallback: use original content as-is
-                            snippet.innerHTML = originalSnippetContent[idx];
-                            console.log('optimizeLeftColumnContent: Restored Article', idx + 1, 'with original content');
+                const paragraphs = snippet.querySelectorAll('p');
+                const snippetText = snippet.textContent || snippet.innerHTML.trim();
+                if (paragraphs.length === 0 || !snippetText || snippetText.length === 0) {
+                    // Snippet is empty after trimming - restore with minimum content (few visual lines)
+                    const originalContent = originalSnippetContent.get(section);
+                    if (originalContent && originalContent.trim().length > 0) {
+                        console.warn(`optimizeLeftColumnContent: Article ${idx + 2} snippet empty after trimming, restoring with minimum content`);
+                        const minContent = ensureMinimumSnippetContent(originalContent);
+                        snippet.innerHTML = minContent;
+                        // Force reflow for Safari
+                        if (isSafari) {
+                            snippet.offsetHeight;
+                            articleColLeft.offsetHeight;
+                            void snippet.offsetHeight;
                         }
-                        snippet.offsetHeight; // Force reflow
                     } else {
-                        // Last resort: try data-full-content
+                        // Try to get from data-full-content
                         const fullContent = section.getAttribute('data-full-content');
                         if (fullContent) {
-                            try {
-                                const tempDiv = document.createElement('div');
-                                tempDiv.innerHTML = fullContent;
-                                const paragraphs = Array.from(tempDiv.querySelectorAll('p'));
-                                if (paragraphs.length > 0) {
-                                    snippet.innerHTML = paragraphs[0].outerHTML;
-                                    console.log('optimizeLeftColumnContent: Restored Article', idx + 1, 'from data-full-content (first paragraph)');
+                            const minContent = ensureMinimumSnippetContent(fullContent);
+                            if (minContent) {
+                                snippet.innerHTML = minContent;
+                                // Force reflow for Safari
+                                if (isSafari) {
                                     snippet.offsetHeight;
+                                    articleColLeft.offsetHeight;
+                                    void snippet.offsetHeight;
                                 }
-                            } catch (e) {
-                                console.error('optimizeLeftColumnContent: Error restoring Article', idx + 1, ':', e);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Pre-check: Ensure all snippets have content before fixing widows
+        // This prevents fixWidowsInSnippets from making snippets empty
+        articleSections.forEach((section) => {
+            const snippet = section.querySelector('.article-snippet');
+            if (snippet) {
+                const snippetText = snippet.textContent || snippet.innerHTML.trim();
+                if (!snippetText || snippetText.length === 0) {
+                    // Snippet is empty, restore with minimum content (few visual lines)
+                    const originalContent = originalSnippetContent.get(section);
+                    if (originalContent) {
+                        console.warn('optimizeLeftColumnContent: Pre-check - restoring with minimum content for empty snippet');
+                        const minContent = ensureMinimumSnippetContent(originalContent);
+                        snippet.innerHTML = minContent;
+                        // Force reflow for Safari
+                        if (isSafari) {
+                            snippet.offsetHeight;
+                            articleColLeft.offsetHeight;
+                            void snippet.offsetHeight;
+                        }
+                    } else {
+                        // If no original content, try to get from data-full-content
+                        const fullContent = section.getAttribute('data-full-content');
+                        if (fullContent) {
+                            const minContent = ensureMinimumSnippetContent(fullContent);
+                            if (minContent) {
+                                snippet.innerHTML = minContent;
+                                // Force reflow for Safari
+                                if (isSafari) {
+                                    snippet.offsetHeight;
+                                    articleColLeft.offsetHeight;
+                                    void snippet.offsetHeight;
+                                }
                             }
                         }
                     }
@@ -2296,99 +2997,240 @@ function optimizeLeftColumnContent() {
         });
         
         // Fix widows (single words at end of line) for articles 2 and 3
-        // DISABLED: This function was causing content to disappear
-        // fixWidowsInSnippets(articleSections);
+        fixWidowsInSnippets(articleSections);
         
-        // FINAL SAFEGUARD: One last check to ensure content is preserved
-        // This prevents content from being cleared by subsequent functions
+        // Final safety check: Ensure all snippets have content after fixing widows
         articleSections.forEach((section, idx) => {
             const snippet = section.querySelector('.article-snippet');
             if (snippet) {
-                const finalContent = snippet.innerHTML || '';
-                if (!finalContent || finalContent.trim() === '') {
-                    console.error('optimizeLeftColumnContent: FINAL CHECK - Article', idx + 1, 'is empty! Restoring original content.');
-                    if (originalSnippetContent[idx] && originalSnippetContent[idx].trim() !== '') {
-                        snippet.innerHTML = originalSnippetContent[idx];
-                        snippet.offsetHeight;
+                const snippetText = snippet.textContent || snippet.innerHTML.trim();
+                const paragraphs = snippet.querySelectorAll('p');
+                if (!snippetText || snippetText.length === 0 || paragraphs.length === 0) {
+                    // Snippet is empty, restore with minimum content (few visual lines)
+                    const originalContent = originalSnippetContent.get(section);
+                    if (originalContent && originalContent.trim().length > 0) {
+                        console.warn(`optimizeLeftColumnContent: Final check - Article ${idx + 2} snippet empty, restoring with minimum content`);
+                        // For Safari, use full original content; others: use minimum
+                        const contentToRestore = isSafari ? originalContent : ensureMinimumSnippetContent(originalContent);
+                        snippet.innerHTML = contentToRestore;
+                        // Force reflow for Safari
+                        if (isSafari) {
+                            snippet.offsetHeight;
+                            articleColLeft.offsetHeight;
+                            void snippet.offsetHeight;
+                        }
+                    } else {
+                        // If no original content, try to get from data-full-content
+                        const fullContent = section.getAttribute('data-full-content');
+                        if (fullContent) {
+                            // For Safari, use first 2 paragraphs; others: use minimum
+                            let contentToRestore;
+                            if (isSafari) {
+                                const tempDiv = document.createElement('div');
+                                tempDiv.innerHTML = fullContent;
+                                const paragraphs = Array.from(tempDiv.querySelectorAll('p'));
+                                if (paragraphs.length > 0) {
+                                    const firstTwo = paragraphs.slice(0, Math.min(2, paragraphs.length));
+                                    contentToRestore = firstTwo.map(p => p.outerHTML).join('');
+                                } else {
+                                    contentToRestore = ensureMinimumSnippetContent(fullContent);
+                                }
+                            } else {
+                                contentToRestore = ensureMinimumSnippetContent(fullContent);
+                            }
+                            if (contentToRestore) {
+                                console.warn(`optimizeLeftColumnContent: Article ${idx + 2} using content from data-full-content`);
+                                snippet.innerHTML = contentToRestore;
+                                // Force reflow for Safari
+                                if (isSafari) {
+                                    snippet.offsetHeight;
+                                    articleColLeft.offsetHeight;
+                                    void snippet.offsetHeight;
+                                }
+                            }
+                        }
                     }
-                } else {
-                    console.log('optimizeLeftColumnContent: FINAL CHECK - Article', idx + 1, 'has content, length:', finalContent.length, 'preview:', finalContent.substring(0, 100));
-                    // Store the final content in a data attribute so we can restore it if something clears it
-                    snippet.setAttribute('data-optimized-content', finalContent);
                 }
             }
         });
         
-        // Add a MutationObserver to detect if content is being modified after optimization
+        // Safari-specific final verification: Double-check content is actually visible
+        if (isSafari) {
+            setTimeout(() => {
+                let needsRestore = false;
+                articleSections.forEach((section, idx) => {
+                    const snippet = section.querySelector('.article-snippet');
+                    if (snippet) {
+                        const paragraphs = snippet.querySelectorAll('p');
+                        const snippetText = snippet.textContent || snippet.innerHTML.trim();
+                        if (paragraphs.length === 0 || snippetText.length === 0) {
+                            console.error(`optimizeLeftColumnContent: Safari final check - Article ${idx + 2} still empty, restoring original`);
+                            needsRestore = true;
+                            const originalContent = originalSnippetContent.get(section);
+                            if (originalContent && originalContent.trim().length > 0) {
+                                snippet.innerHTML = originalContent;
+                                snippet.offsetHeight;
+                                articleColLeft.offsetHeight;
+                                void snippet.offsetHeight;
+                            }
+                        }
+                    }
+                });
+                if (needsRestore) {
+                    console.warn('optimizeLeftColumnContent: Safari - Had to restore content in final check');
+                }
+            }, 1500); // Longer delay for Safari
+        }
+        
+        // ULTIMATE SAFETY CHECK: Force all snippets to have content before returning
+        // This is a last resort to ensure content is never empty
         articleSections.forEach((section, idx) => {
             const snippet = section.querySelector('.article-snippet');
             if (snippet) {
-                const observer = new MutationObserver((mutations) => {
-                    mutations.forEach((mutation) => {
-                        if (mutation.type === 'childList' || mutation.type === 'characterData') {
-                            const currentContent = snippet.innerHTML || '';
-                            const savedContent = snippet.getAttribute('data-optimized-content');
-                            if (savedContent && currentContent !== savedContent && currentContent.length < savedContent.length * 0.5) {
-                                console.warn('optimizeLeftColumnContent: Content was modified for Article', idx + 1, '! Restoring saved content.');
-                                console.warn('Original length:', savedContent.length, 'Current length:', currentContent.length);
-                                snippet.innerHTML = savedContent;
-                                snippet.offsetHeight;
-                            }
+                const snippetText = snippet.textContent || snippet.innerHTML.trim();
+                const paragraphs = snippet.querySelectorAll('p');
+                if (!snippetText || snippetText.length === 0 || paragraphs.length === 0) {
+                    console.error(`optimizeLeftColumnContent: Article ${idx + 2} snippet STILL empty after all checks - forcing restore`);
+                    
+                    // Try original content first - full content for Safari, minimum for others
+                    const originalContent = originalSnippetContent.get(section);
+                    if (originalContent && originalContent.trim().length > 0) {
+                        const contentToRestore = isSafari ? originalContent : ensureMinimumSnippetContent(originalContent);
+                        snippet.innerHTML = contentToRestore;
+                        if (isSafari) {
+                            snippet.offsetHeight;
+                            articleColLeft.offsetHeight;
+                            void snippet.offsetHeight;
                         }
-                    });
-                });
-                observer.observe(snippet, { childList: true, subtree: true, characterData: true });
-                // Store observer so it can be disconnected later if needed
-                snippet._contentObserver = observer;
+                        console.log(`optimizeLeftColumnContent: Article ${idx + 2} restored with ${isSafari ? 'full' : 'minimum'} content from original`);
+                        return;
+                    }
+                    
+                    // Try data-full-content - first 2 paragraphs for Safari, minimum for others
+                    const fullContent = section.getAttribute('data-full-content');
+                    if (fullContent) {
+                        let contentToRestore;
+                        if (isSafari) {
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = fullContent;
+                            const paragraphs = Array.from(tempDiv.querySelectorAll('p'));
+                            if (paragraphs.length > 0) {
+                                const firstTwo = paragraphs.slice(0, Math.min(2, paragraphs.length));
+                                contentToRestore = firstTwo.map(p => p.outerHTML).join('');
+                            } else {
+                                contentToRestore = ensureMinimumSnippetContent(fullContent);
+                            }
+                        } else {
+                            contentToRestore = ensureMinimumSnippetContent(fullContent);
+                        }
+                        if (contentToRestore) {
+                            snippet.innerHTML = contentToRestore;
+                            if (isSafari) {
+                                snippet.offsetHeight;
+                                articleColLeft.offsetHeight;
+                                void snippet.offsetHeight;
+                            }
+                            console.log(`optimizeLeftColumnContent: Article ${idx + 2} restored with ${isSafari ? 'first 2 paragraphs' : 'minimum content'} from data-full-content`);
+                            return;
+                        }
+                    }
+                    
+                    // Last resort: at least show a placeholder
+                    snippet.innerHTML = '<p>Content unavailable</p>';
+                    console.error(`optimizeLeftColumnContent: Article ${idx + 2} could not be restored, showing placeholder`);
+                }
             }
         });
+        
+        // Delayed verification check: Ensure content persists after a short delay
+        // This catches cases where something might clear content after we return
+        // Safari needs longer delays and more aggressive checks
+        const delayedCheckDelay = isSafari ? 1000 : 500;
+        setTimeout(() => {
+            const stillEmptySnippets = [];
+            articleSections.forEach((section, idx) => {
+                const snippet = section.querySelector('.article-snippet');
+                if (snippet) {
+                    const snippetText = snippet.textContent || snippet.innerHTML.trim();
+                    const paragraphs = snippet.querySelectorAll('p');
+                    if (!snippetText || snippetText.length === 0 || paragraphs.length === 0) {
+                        console.error(`optimizeLeftColumnContent: Article ${idx + 2} snippet empty after ${delayedCheckDelay}ms delay - restoring`);
+                        stillEmptySnippets.push({section, idx});
+                    }
+                }
+            });
+            
+            // Restore empty snippets with forced reflows for Safari
+            stillEmptySnippets.forEach(({section, idx}) => {
+                const snippet = section.querySelector('.article-snippet');
+                if (snippet) {
+                    const originalContent = originalSnippetContent.get(section);
+                    if (originalContent && originalContent.trim().length > 0) {
+                        // Safari: use full original content; others: use minimum
+                        const contentToRestore = isSafari ? originalContent : ensureMinimumSnippetContent(originalContent);
+                        snippet.innerHTML = contentToRestore;
+                        // Force multiple reflows for Safari
+                        if (isSafari) {
+                            snippet.offsetHeight;
+                            articleColLeft.offsetHeight;
+                            void snippet.offsetHeight;
+                            // Force another reflow after a micro-delay
+                            setTimeout(() => {
+                                snippet.offsetHeight;
+                                articleColLeft.offsetHeight;
+                            }, 10);
+                        }
+                    } else {
+                        const fullContent = section.getAttribute('data-full-content');
+                        if (fullContent) {
+                            // Safari: use first 2 paragraphs; others: use minimum
+                            let contentToRestore;
+                            if (isSafari) {
+                                const tempDiv = document.createElement('div');
+                                tempDiv.innerHTML = fullContent;
+                                const paragraphs = Array.from(tempDiv.querySelectorAll('p'));
+                                if (paragraphs.length > 0) {
+                                    const firstTwo = paragraphs.slice(0, Math.min(2, paragraphs.length));
+                                    contentToRestore = firstTwo.map(p => p.outerHTML).join('');
+                                } else {
+                                    contentToRestore = ensureMinimumSnippetContent(fullContent);
+                                }
+                            } else {
+                                contentToRestore = ensureMinimumSnippetContent(fullContent);
+                            }
+                            if (contentToRestore) {
+                                snippet.innerHTML = contentToRestore;
+                                // Force multiple reflows for Safari
+                                if (isSafari) {
+                                    snippet.offsetHeight;
+                                    articleColLeft.offsetHeight;
+                                    void snippet.offsetHeight;
+                                    // Force another reflow after a micro-delay
+                                    setTimeout(() => {
+                                        snippet.offsetHeight;
+                                        articleColLeft.offsetHeight;
+                                    }, 10);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }, delayedCheckDelay);
         
     } catch (error) {
         console.error('optimizeLeftColumnContent error:', error);
-        // Fallback: Restore original content if optimization failed (critical for mobile and Safari)
-        if (typeof originalSnippetContent !== 'undefined' && originalSnippetContent.length > 0) {
-            try {
-                const firstPage = document.querySelector('.newsletter-page');
-                if (firstPage) {
-                    const articleColLeft = firstPage.querySelector('.article-col-left');
-                    if (articleColLeft) {
-                        const articleSections = Array.from(articleColLeft.querySelectorAll('.article-section'));
-                        articleSections.forEach((section, idx) => {
-                            const snippet = section.querySelector('.article-snippet');
-                            if (snippet) {
-                                // Restore original content
-                                if (originalSnippetContent[idx]) {
-                                    snippet.innerHTML = originalSnippetContent[idx];
-                                } else {
-                                    // Last resort: Try data-full-content
-                                    const fullContent = section.getAttribute('data-full-content');
-                                    if (fullContent) {
-                                        const tempDiv = document.createElement('div');
-                                        tempDiv.innerHTML = fullContent;
-                                        const paragraphs = Array.from(tempDiv.querySelectorAll('p'));
-                                        if (paragraphs.length > 0) {
-                                            snippet.innerHTML = paragraphs.slice(0, 2).map(p => p.outerHTML).join('');
-                                        }
-                                    }
-                                }
-                                // Force reflow
-                                snippet.offsetHeight;
-                                // Force rendering for mobile
-                                const isMobile = window.innerWidth <= 768;
-                                if (isMobile) {
-                                    snippet.style.display = 'none';
-                                    snippet.offsetHeight;
-                                    snippet.style.display = '';
-                                    snippet.offsetHeight;
-                                }
-                            }
-                        });
-                    }
+        // Restore original content on error with minimum content
+        articleSections.forEach((section) => {
+            const snippet = section.querySelector('.article-snippet');
+            if (snippet) {
+                const originalContent = originalSnippetContent.get(section);
+                if (originalContent) {
+                    const minContent = ensureMinimumSnippetContent(originalContent);
+                    snippet.innerHTML = minContent;
                 }
-            } catch (fallbackError) {
-                console.error('Error in fallback:', fallbackError);
             }
-        }
+        });
         // Don't let this break the newsletter generation
     }
 }
@@ -2402,13 +3244,18 @@ function fixWidowsInSnippets(articleSections) {
         const paragraphs = snippet.querySelectorAll('p');
         if (paragraphs.length === 0) return;
         
+        // Never remove the last paragraph if it's the only paragraph
+        if (paragraphs.length === 1) {
+            return; // Keep at least one paragraph
+        }
+        
         // Check the last paragraph
         const lastParagraph = paragraphs[paragraphs.length - 1];
         const text = lastParagraph.textContent || '';
         const words = text.trim().split(/\s+/);
         
-        // If the last paragraph has only one word, remove it
-        if (words.length === 1) {
+        // If the last paragraph has only one word, remove it (only if we have more than one paragraph)
+        if (words.length === 1 && paragraphs.length > 1) {
             // Remove the last paragraph
             lastParagraph.remove();
             return;
@@ -2460,7 +3307,7 @@ function splitPagesDynamically() {
         if (mobile) {
             // On mobile, only show first page
             if (idx === 0) {
-                p.style.display = 'flex';
+        p.style.display = 'flex';
             } else {
                 p.style.display = 'none';
             }
@@ -2499,10 +3346,15 @@ function splitPagesDynamically() {
         // Get max height for content area (page height minus masthead)
         // Safari may need explicit calculation instead of relying on computed maxHeight
         const pageHeight = parseFloat(getComputedStyle(page).height) || 11 * 96; // 11in in pixels
-        const mastheadHeight = page.querySelector('.newsletter-masthead')?.offsetHeight || 0;
+        const mastheadHeight = page.querySelector('.newsletter-masthead') ? 
+            page.querySelector('.newsletter-masthead').offsetHeight : 0;
         const padding = parseFloat(getComputedStyle(page).paddingTop) + parseFloat(getComputedStyle(page).paddingBottom);
         const maxHeight = (pageHeight - mastheadHeight - padding) || parseFloat(getComputedStyle(contentArea).maxHeight) || (10.5 * 96);
-        if (!maxHeight || maxHeight <= 0) continue;
+        console.log('Page', pageIndex, 'maxHeight:', maxHeight, 'pageHeight:', pageHeight, 'mastheadHeight:', mastheadHeight);
+        if (!maxHeight || maxHeight <= 0) {
+            console.warn('Invalid maxHeight, using fallback');
+            continue;
+        }
         
         // Check if content overflows
         // CSS columns with overflow:hidden clips content, so scrollHeight might equal clientHeight
@@ -2542,7 +3394,9 @@ function splitPagesDynamically() {
             console.log('Content overflows on page', pageIndex, '- splitting. Content height:', contentHeight, 'Container height:', containerHeight, 'Elements:', elementCount);
             
             // Content overflows - split into multiple pages
+            // Get all child elements
             const elements = Array.from(contentDiv.children);
+            console.log('Found', elements.length, 'elements to split');
             if (elements.length === 0) continue;
             
             // Split pages element by element - allows articles to span multiple pages
@@ -2592,11 +3446,13 @@ function splitPagesDynamically() {
                 // Also check if we've accumulated enough elements (every ~40-50 elements should be a page)
                 const overflowThreshold = maxHeight * 0.98; // 98% of maxHeight - fill pages more
                 const elementCountOnPage = (currentPageContent.match(/<[^>]+>/g) || []).length;
-                const shouldCreatePage = testHeight > overflowThreshold || (elementCountOnPage > 100 && testHeight > maxHeight * 0.98);
+                const shouldCreatePage = testHeight > overflowThreshold || (elementCountOnPage > 50 && testHeight > maxHeight * 0.90);
                 
                 if (shouldCreatePage) {
                     // If current page already has content, finalize it and create new page
                     if (currentPageContent.trim() !== '') {
+                        console.log('Creating new page after element', i, 'testHeight:', testHeight, 'maxHeight:', maxHeight, 'threshold:', overflowThreshold);
+                        
                         // Set current page content (without the element that caused overflow)
                         currentContentDiv.innerHTML = currentPageContent;
                         
@@ -2613,13 +3469,18 @@ function splitPagesDynamically() {
                         const parentNode = currentPage.parentNode;
                         if (parentNode) {
                             parentNode.insertBefore(newPage, currentPage.nextSibling);
+                            console.log('Inserted new page into DOM. Total pages now:', document.querySelectorAll('.newsletter-page').length);
                         } else {
+                            console.error('ERROR: Cannot insert new page - parentNode is null!');
                             // Fallback: try to append to newsletter container
                             const newsletterContainer = document.getElementById('newsletter-container');
                             if (newsletterContainer) {
                                 const newsletter = newsletterContainer.querySelector('#newsletter .newsletter') || newsletterContainer.querySelector('.newsletter');
                                 if (newsletter) {
                                     newsletter.appendChild(newPage);
+                                    console.log('Inserted new page into newsletter container as fallback');
+                                } else {
+                                    console.error('ERROR: Cannot find newsletter container to append page!');
                                 }
                             }
                         }
@@ -2638,9 +3499,11 @@ function splitPagesDynamically() {
                         currentContentDiv = newContentDiv;
                         currentPageContent = elementHTML; // Start new page with the element that overflowed
                         pagesCreated++;
+                        console.log('Pages created so far:', pagesCreated);
                     } else {
                         // Current page is empty but element overflows - add it anyway
                         // This handles edge case where a single large element exceeds page height
+                        console.log('Element', i, 'overflows empty page, adding anyway. testHeight:', testHeight);
                         currentPageContent += elementHTML;
                     }
                 } else {
@@ -2650,9 +3513,14 @@ function splitPagesDynamically() {
             }
             
             // CRITICAL: Always set final page content
+            // This ensures the last page displays even with minimal content
+            console.log('Setting final page content. currentPageContent length:', currentPageContent ? currentPageContent.length : 0);
+            
             // Ensure we have a valid content div reference
             if (!currentContentDiv || !currentContentDiv.parentNode) {
+                console.error('ERROR: currentContentDiv is invalid! Attempting recovery...');
                 const allPages = document.querySelectorAll('.newsletter-page');
+                console.log('Total pages found:', allPages.length);
                 if (allPages.length > 0) {
                     const lastPage = allPages[allPages.length - 1];
                     currentContentDiv = lastPage.querySelector('.article-columns-three-css');
@@ -2664,15 +3532,19 @@ function splitPagesDynamically() {
                             currentContentDiv.style.width = '100%';
                             currentContentDiv.style.maxWidth = '100%';
                             contentArea.appendChild(currentContentDiv);
+                            console.log('Created new contentDiv for final page');
                         }
                     }
                     currentPage = lastPage;
                 }
             }
             
-            // Set final page content
+            // Set final page content - this should always have content since we add elements one by one
             if (currentPageContent && currentPageContent.trim() !== '' && currentContentDiv) {
                 currentContentDiv.innerHTML = currentPageContent;
+                console.log('Successfully set final page content');
+            } else {
+                console.warn('WARNING: Final page content was empty');
             }
             
             // Ensure pages are visible
@@ -2684,19 +3556,35 @@ function splitPagesDynamically() {
                 currentContentDiv.offsetHeight; // Force reflow
             }
             
-            // Set page visibility (handled by updatePageVisibility() later, but set here for immediate effect)
             if (currentPage && currentPage.parentNode) {
-                if (isMobile()) {
-                    const pageIndex = Array.from(document.querySelectorAll('.newsletter-page')).indexOf(currentPage);
-                    currentPage.style.display = pageIndex === 0 ? 'flex' : 'none';
+                // On mobile, only show first page; on desktop, remove inline styles to let CSS handle it
+                const pageIndex = Array.from(document.querySelectorAll('.newsletter-page')).indexOf(currentPage);
+                const mobile = isMobile();
+                if (mobile) {
+                    if (pageIndex === 0) {
+                currentPage.style.display = 'flex';
+                    } else {
+                        currentPage.style.display = 'none';
+                    }
                 } else {
-                    currentPage.style.display = '';
+                    currentPage.style.display = ''; // Remove inline style on desktop
                 }
                 currentPage.offsetHeight; // Force reflow
             }
             
+            console.log('Created', pagesCreated, 'new pages. Total elements processed:', elements.length);
+            
             // Final verification: Ensure all elements were processed
             const finalPages = document.querySelectorAll('.newsletter-page');
+            console.log('FINAL PAGE COUNT:', finalPages.length, 'pages found in DOM');
+            finalPages.forEach((p, idx) => {
+                const contentDiv = p.querySelector('.article-columns-three-css');
+                const elementCount = contentDiv ? contentDiv.children.length : 0;
+                const display = window.getComputedStyle(p).display;
+                const inlineDisplay = p.style.display;
+                console.log(`Page ${idx}: class="${p.className}", elements=${elementCount}, display=${display}, inline=${inlineDisplay || 'none'}`);
+            });
+            
             let totalElementsInPages = 0;
             for (let p = 1; p < finalPages.length; p++) { // Skip page 1
                 const pageContentDiv = finalPages[p].querySelector('.article-columns-three-css');
@@ -2704,26 +3592,79 @@ function splitPagesDynamically() {
                     totalElementsInPages += pageContentDiv.children.length;
                 }
             }
+            console.log('Verification: Original elements:', elements.length, 'Elements in pages:', totalElementsInPages);
             if (totalElementsInPages < elements.length) {
                 console.warn('WARNING: Some elements may have been lost during page splitting!');
             }
         } else {
-            // No overflow - ensure page is visible
+            console.log('No overflow detected on page', pageIndex);
+            // Even if no overflow, ensure the page content is set and visible
             if (contentDiv && contentDiv.children.length > 0) {
-                contentDiv.offsetHeight; // Force reflow
+                console.log('Page', pageIndex, 'has', contentDiv.children.length, 'elements, content should be visible');
+                // Force a reflow to ensure content displays
+                contentDiv.offsetHeight;
                 if (page) {
-                    if (isMobile()) {
-                        const pageIndex = Array.from(document.querySelectorAll('.newsletter-page')).indexOf(page);
-                        page.style.display = pageIndex === 0 ? 'flex' : 'none';
+                    // On mobile, only show first page; on desktop, remove inline styles to let CSS handle it
+                    const pageIndex = Array.from(document.querySelectorAll('.newsletter-page')).indexOf(page);
+                    const mobile = isMobile();
+                    if (mobile) {
+                        if (pageIndex === 0) {
+                    page.style.display = 'flex';
+                        } else {
+                            page.style.display = 'none';
+                        }
                     } else {
-                        page.style.display = '';
+                        page.style.display = ''; // Remove inline style on desktop
                     }
                     page.offsetHeight;
                 }
+            } else {
+                console.log('Warning: Page', pageIndex, 'has no content elements');
             }
         }
     }
     
+    // Final safeguard: Ensure the last page always displays
+    const allPagesAfter = document.querySelectorAll('.newsletter-page');
+    console.log('Final safeguard - Total pages after processing:', allPagesAfter.length);
+    if (allPagesAfter.length > 1) {
+        const lastPage = allPagesAfter[allPagesAfter.length - 1];
+        const lastContentDiv = lastPage.querySelector('.article-columns-three-css');
+        console.log('Last page:', lastPage, 'Content div:', lastContentDiv);
+        
+        if (lastContentDiv) {
+            const elementCount = lastContentDiv.children.length;
+            const contentHTML = lastContentDiv.innerHTML.trim();
+            console.log('Last page has', elementCount, 'elements, content length:', contentHTML.length);
+            
+            // Ensure page is visible (but hide pages 2+ on mobile)
+            const lastPageIndex = Array.from(document.querySelectorAll('.newsletter-page')).indexOf(lastPage);
+            const mobile = isMobile();
+            if (mobile) {
+                if (lastPageIndex === 0) {
+            lastPage.style.display = 'flex';
+                } else {
+                    lastPage.style.display = 'none';
+                }
+            } else {
+                lastPage.style.display = ''; // Remove inline style on desktop
+            }
+            lastContentDiv.style.display = 'block';
+            
+            // Force reflow to ensure content renders
+            lastPage.offsetHeight;
+            lastContentDiv.offsetHeight;
+            
+            // Verify content exists
+            if (contentHTML.length === 0 && elementCount === 0) {
+                console.warn('WARNING: Last page is empty - this may indicate content was lost during splitting');
+            } else {
+                console.log('Last page content confirmed with', elementCount, 'elements');
+            }
+        } else {
+            console.error('ERROR: Last page has no content div!');
+        }
+    }
 }
 
 // Update page references on front page to point to actual pages where articles start
@@ -2851,6 +3792,12 @@ function fixFootnoteLineBreaks(element) {
 // Mark footnotes sections and add spacing before them, and style footnotes properly
 function markFootnotesSections() {
     const pages = document.querySelectorAll('.newsletter-page');
+    
+    // CRITICAL: Define globalFootnoteCounter OUTSIDE page loop to maintain numbering across pages
+    // But reset it per article so each article starts at 1
+    let globalFootnoteCounter = 0; // Sequential counter within each article (resets per article)
+    let lastArticleTitle = null; // Track which article we're processing footnotes for (using title text as unique identifier)
+    const articlesWithFootnotesLabels = new Set(); // Track which articles already have "Footnotes:" labels
     
     // FIRST PASS: Collect ALL footnote numbers from ALL pages BEFORE processing references
     // But footnotes sections might not be fully processed yet, so we need to look for them more broadly
@@ -3161,9 +4108,8 @@ function markFootnotesSections() {
         
         console.log('Total footnotes found across all containers:', allFootnotesAcrossContainers.length);
         
-        // Track if we've already added the label to avoid duplicates
-        let footnotesLabelAdded = false;
-        let globalFootnoteCounter = 0; // Sequential counter across all containers
+        // NOTE: globalFootnoteCounter, lastArticleTitle, and articlesWithFootnotesLabels are defined at function level, 
+        // outside page loop, to maintain numbering across pages but reset per article
         
         actualFootnoteContainers.forEach(el => {
             // Skip list items - only process containers
@@ -3226,10 +4172,134 @@ function markFootnotesSections() {
             
             el.classList.add('footnotes-section');
             
-            // Add "Footnotes:" label only once, at the start of the first footnotes container
-            // Only if there's no heading inside and we haven't added it yet
-            // This should only run for actual footnotes sections (already filtered above)
-            if (!footnotesLabelAdded) {
+            // CRITICAL: Detect which article this footnote belongs to using data-article-index attribute
+            // This attribute was added during preprocessing to mark footnotes with their source article
+            let currentArticleIndex = null;
+            
+            // Try to find data-article-index on the footnote container or any child elements
+            const articleIndexAttr = el.getAttribute('data-article-index');
+            if (articleIndexAttr !== null) {
+                currentArticleIndex = articleIndexAttr;
+            } else {
+                // Try to find it in child list items (ol > li), list containers (ol/ul), or paragraphs
+                const listItemsWithIndex = Array.from(el.querySelectorAll('li[data-article-index], ol[data-article-index], ul[data-article-index]'));
+                if (listItemsWithIndex.length > 0) {
+                    // Use the first one found
+                    currentArticleIndex = listItemsWithIndex[0].getAttribute('data-article-index');
+                    // Also set it on the container for future reference
+                    el.setAttribute('data-article-index', currentArticleIndex);
+                } else {
+                    // Fallback: Determine article by finding which article content container this is in
+                    // Check all article content containers and see which one contains this footnote
+                    const articleContentRight = el.closest('.article-content-right');
+                    if (articleContentRight) {
+                        // Article 1 (index 0) uses .article-content-right on front page
+                        currentArticleIndex = '0';
+                        el.setAttribute('data-article-index', '0');
+                    } else {
+                        // Check if it's in article-columns-three-css (articles on subsequent pages)
+                        const articleColumns = el.closest('.article-columns-three-css');
+                        if (articleColumns) {
+                            // Find the closest article title that comes before this footnote in DOM order
+                            const page = el.closest('.newsletter-page');
+                            if (page) {
+                                const allTitles = Array.from(page.querySelectorAll('.article-title'));
+                                // Find all elements between each title and this footnote
+                                let articleCount = -1;
+                                for (let i = 0; i < allTitles.length; i++) {
+                                    const title = allTitles[i];
+                                    // Check if this footnote comes after this title in DOM order
+                                    const position = title.compareDocumentPosition(el);
+                                    if (position & Node.DOCUMENT_POSITION_FOLLOWING) {
+                                        // el comes after this title, so it might belong to this article
+                                        // But we need to check if there's another title after this one and before el
+                                        const nextTitle = allTitles[i + 1];
+                                        if (!nextTitle || !(nextTitle.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING)) {
+                                            // This is the closest title before el
+                                            // Determine article index: first title on page 2+ is usually article 1 continuing (0)
+                                            // But this is unreliable. Better: check if we can find article sections.
+                                            const articleSection = el.closest('.article-section');
+                                            if (articleSection) {
+                                                // Article sections on front page are articles 2 (index 1) or 3 (index 2)
+                                                // But on subsequent pages, we're in article-columns-three-css
+                                                // For now, try to count titles before this one
+                                                articleCount = i;
+                                            } else {
+                                                articleCount = i;
+                                            }
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (articleCount >= 0) {
+                                    // The article index is the count of titles before this footnote
+                                    // But we need to account for front page vs subsequent pages
+                                    // For now, use the title count as a heuristic
+                                    currentArticleIndex = articleCount.toString();
+                                    el.setAttribute('data-article-index', currentArticleIndex);
+                                }
+                            }
+                        } else {
+                            // Check if it's in an article-section (front page, articles 2 or 3)
+                            const articleSection = el.closest('.article-section');
+                            if (articleSection) {
+                                // Count article sections before this one on the same page
+                                const page = el.closest('.newsletter-page');
+                                if (page) {
+                                    const allSections = Array.from(page.querySelectorAll('.article-section'));
+                                    const sectionIndex = allSections.indexOf(articleSection);
+                                    // Article sections are indexed: first = article 2 (index 1), second = article 3 (index 2)
+                                    if (sectionIndex >= 0) {
+                                        currentArticleIndex = (sectionIndex + 1).toString(); // 0 -> 1 (article 2), 1 -> 2 (article 3)
+                                        el.setAttribute('data-article-index', currentArticleIndex);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // If still no index found, try one more fallback: check all paragraphs in the container
+            if (currentArticleIndex === null) {
+                const paragraphsWithIndex = Array.from(el.querySelectorAll('p[data-article-index]'));
+                if (paragraphsWithIndex.length > 0) {
+                    currentArticleIndex = paragraphsWithIndex[0].getAttribute('data-article-index');
+                    el.setAttribute('data-article-index', currentArticleIndex);
+                } else {
+                    // Last resort: check if we can find any element with data-article-index in the container
+                    const anyElementWithIndex = el.querySelector('[data-article-index]');
+                    if (anyElementWithIndex) {
+                        currentArticleIndex = anyElementWithIndex.getAttribute('data-article-index');
+                        el.setAttribute('data-article-index', currentArticleIndex);
+                    } else {
+                        console.warn('Footnote container has no data-article-index attribute and could not determine article, continuing with current counter', {
+                            container: el,
+                            className: el.className,
+                            id: el.id,
+                            children: Array.from(el.children).map(c => ({ tag: c.tagName, class: c.className, id: c.id }))
+                        });
+                    }
+                }
+            }
+            
+            // If this is a different article than the last one, reset the counter
+            if (currentArticleIndex !== null && currentArticleIndex !== lastArticleTitle) {
+                // Reset counter for new article
+                globalFootnoteCounter = 0;
+                console.log('Resetting footnote counter for new article (index:', currentArticleIndex + ')');
+                lastArticleTitle = currentArticleIndex;
+            } else if (currentArticleIndex === null) {
+                // If no article index found, assume it's the same article (continue counter)
+                // This handles cases where footnotes span pages or weren't marked
+            } else {
+                // Same article, continue with current counter
+            }
+            
+            // Add "Footnotes:" label only once per article, at the start of the first footnotes container
+            // Only if there's no heading inside and this article hasn't had a label yet
+            const articleKey = currentArticleIndex !== null ? currentArticleIndex : 'unknown';
+            if (!articlesWithFootnotesLabels.has(articleKey)) {
                 const hasHeading = el.querySelector('h1, h2, h3, h4, h5, h6');
                 const hasExistingLabel = el.querySelector('.footnotes-label');
                 
@@ -3239,7 +4309,7 @@ function markFootnotesSections() {
                     label.className = 'footnotes-label';
                     label.textContent = 'Footnotes:';
                     el.insertBefore(label, el.firstChild);
-                    footnotesLabelAdded = true; // Mark that we've added the label
+                    articlesWithFootnotesLabels.add(articleKey); // Mark that this article has a label
                 }
             }
             
@@ -3690,7 +4760,7 @@ function markFootnotesSections() {
             
             if (!isInFootnotesList && !footnoteRefData.some(d => d.element === link)) {
                 let num = null;
-                const href = link.getAttribute('href') || '';
+                    const href = link.getAttribute('href') || '';
                 const id = link.getAttribute('id') || '';
                 // Extract footnote number from href or id
                 const hrefMatch = href.match(/#footnote-?(\d+)/i);
@@ -3766,6 +4836,185 @@ function markFootnotesSections() {
     } // End for loop
 }
 
+// Move a heading to the next page
+function moveHeadingToNextPage(heading, currentPageIndex, pages) {
+    // Get all pages (in case pages NodeList was stale)
+    const allPages = document.querySelectorAll('.newsletter-page');
+    
+    // Get the next page
+    const nextPageIndex = currentPageIndex + 1;
+    let nextPage = allPages[nextPageIndex];
+    
+    if (!nextPage) {
+        // No next page exists, create one
+        const lastPage = allPages[allPages.length - 1];
+        const newPage = document.createElement('div');
+        const currentMode = getCurrentMode();
+        const modeClass = currentMode && currentMode !== 'normal' ? ` mode-${currentMode}` : '';
+        newPage.className = `newsletter-page${modeClass}`;
+        newPage.innerHTML = `
+            <div class="newsletter-content">
+                <div class="article-columns-three-css"></div>
+            </div>
+        `;
+        lastPage.parentElement.appendChild(newPage);
+        nextPage = newPage;
+    }
+    
+    const nextPageContent = nextPage.querySelector('.article-columns-three-css');
+    if (!nextPageContent) return;
+    
+    // Clone the heading
+    const headingClone = heading.cloneNode(true);
+    
+    // Remove the force-page-break and force-column-break classes if they exist
+    headingClone.classList.remove('force-page-break');
+    headingClone.classList.remove('force-column-break');
+    
+    // Insert at the beginning of the next page's content
+    if (nextPageContent.firstChild) {
+        nextPageContent.insertBefore(headingClone, nextPageContent.firstChild);
+    } else {
+        nextPageContent.appendChild(headingClone);
+    }
+    
+    // Remove the original heading
+    heading.remove();
+}
+
+// Prevent orphaned headings - ensure headings have at least one line of content below them in their column
+function preventOrphanedHeadings() {
+    const pages = document.querySelectorAll('.newsletter-page');
+    
+    // Process pages 2+ (skip page 1 which has special layout)
+    for (let pageIndex = 1; pageIndex < pages.length; pageIndex++) {
+        const page = pages[pageIndex];
+        const contentDiv = page.querySelector('.article-columns-three-css');
+        if (!contentDiv) continue;
+        
+        // Get all headings in this page
+        const headings = Array.from(contentDiv.querySelectorAll('h1, h2, h3, h4, h5, h6, .article-title'));
+        
+        headings.forEach((heading, index) => {
+            // Get the next sibling element that contains text content
+            let nextSibling = heading.nextElementSibling;
+            
+            // Skip empty elements and find the first element with actual text content
+            while (nextSibling && (
+                nextSibling.textContent.trim().length === 0 ||
+                nextSibling.tagName === 'BR' ||
+                (nextSibling.tagName === 'HR' && !nextSibling.classList.contains('footnotes-divider'))
+            )) {
+                nextSibling = nextSibling.nextElementSibling;
+            }
+            
+            // If no next sibling with content, the heading might be orphaned - force break
+            if (!nextSibling) {
+                // Determine which column the heading is in
+                const headingRect = heading.getBoundingClientRect();
+                const containerRect = contentDiv.getBoundingClientRect();
+                const columnWidth = containerRect.width / 3;
+                const headingColumnIndex = Math.floor((headingRect.left - containerRect.left) / columnWidth);
+                const isInThirdColumn = headingColumnIndex >= 2;
+                
+                if (isInThirdColumn) {
+                    // Move heading to next page
+                    moveHeadingToNextPage(heading, pageIndex, pages);
+                    console.log('Heading with no next sibling (third column) - moving to next page:', heading.textContent.substring(0, 50), 'column index:', headingColumnIndex);
+                } else {
+                    heading.classList.add('force-column-break');
+                    console.log('Heading with no next sibling - forcing column break:', heading.textContent.substring(0, 50), 'column index:', headingColumnIndex);
+                }
+                return;
+            }
+            
+            // Check if the heading and its next sibling are in different columns
+            // by comparing their vertical positions (in CSS columns, elements in same column have similar top values)
+            const headingRect = heading.getBoundingClientRect();
+            const nextRect = nextSibling.getBoundingClientRect();
+            const containerRect = contentDiv.getBoundingClientRect();
+            
+            // Calculate the vertical distance between heading bottom and next element top
+            const verticalDiff = nextRect.top - headingRect.bottom;
+            
+            // Get the computed line height to estimate one visual line
+            const computedStyle = getComputedStyle(nextSibling);
+            const lineHeight = parseFloat(computedStyle.lineHeight) || parseFloat(computedStyle.fontSize) * 1.5;
+            
+            // Check if heading and next element are in the same column by comparing their left positions
+            // In CSS columns, elements in the same column have similar left positions
+            const headingLeft = headingRect.left;
+            const nextLeft = nextRect.left;
+            const leftDiff = Math.abs(headingLeft - nextLeft);
+            
+            // If elements are in different columns (large left difference), heading is orphaned
+            // Threshold for same column (accounts for margins/padding and column gaps)
+            const areInSameColumn = leftDiff < 100; // Increased threshold for column gap (0.25in = ~24px)
+            
+            // Calculate how close the heading is to the bottom of the container
+            // This helps detect headings that are at the bottom of a column
+            const headingBottomFromContainerTop = headingRect.bottom - containerRect.top;
+            const containerHeight = containerRect.height;
+            const distanceFromBottom = containerHeight - headingBottomFromContainerTop;
+            
+            // Get heading's computed style for line height
+            const headingStyle = getComputedStyle(heading);
+            const headingLineHeight = parseFloat(headingStyle.lineHeight) || parseFloat(headingStyle.fontSize) * 1.5;
+            
+            // Calculate approximate column height (container height divided by number of columns)
+            // In CSS columns, content flows vertically, so we estimate column height
+            const estimatedColumnHeight = containerHeight; // For CSS columns, this is the full height
+            
+            // Check if heading is in the bottom portion of its column
+            // We need to determine which "column" the heading is in based on its left position
+            const columnWidth = containerRect.width / 3; // Assuming 3 columns
+            const headingColumnIndex = Math.floor((headingRect.left - containerRect.left) / columnWidth);
+            const isInThirdColumn = headingColumnIndex >= 2; // Third column (0-indexed: 0, 1, 2)
+            
+            // More aggressive detection: if heading and next element are in different columns, it's orphaned
+            // OR if there's a large vertical gap (more than 0.8x line height), it's orphaned
+            // OR if heading is very close to bottom (less than 2x line height) and next is in different column
+            if (!areInSameColumn) {
+                // Always force break if in different columns - heading is definitely orphaned
+                // If in third column, move to next page; otherwise force column break
+                if (isInThirdColumn) {
+                    // Move heading to next page
+                    moveHeadingToNextPage(heading, pageIndex, pages);
+                    console.log('Orphaned heading (third column, different column) - moving to next page:', heading.textContent.substring(0, 50), 
+                        'left diff:', leftDiff, 'vertical diff:', verticalDiff, 'column index:', headingColumnIndex);
+                } else {
+                    heading.classList.add('force-column-break');
+                    console.log('Orphaned heading (different column) - forcing column break:', heading.textContent.substring(0, 50), 
+                        'left diff:', leftDiff, 'vertical diff:', verticalDiff, 'column index:', headingColumnIndex);
+                }
+            } else if (verticalDiff > lineHeight * 0.8) {
+                // If large gap even in same column, likely orphaned
+                if (isInThirdColumn) {
+                    // Move heading to next page
+                    moveHeadingToNextPage(heading, pageIndex, pages);
+                    console.log('Orphaned heading (third column, large gap) - moving to next page:', heading.textContent.substring(0, 50), 
+                        'vertical diff:', verticalDiff, 'line height:', lineHeight, 'column index:', headingColumnIndex);
+                } else {
+                    heading.classList.add('force-column-break');
+                    console.log('Orphaned heading detected (large gap) - forcing column break:', heading.textContent.substring(0, 50), 
+                        'vertical diff:', verticalDiff, 'line height:', lineHeight, 'column index:', headingColumnIndex);
+                }
+            } else if (distanceFromBottom < lineHeight * 2 && verticalDiff > 5) {
+                // If heading is near bottom and there's any gap, it might be orphaned
+                if (isInThirdColumn) {
+                    // Move heading to next page
+                    moveHeadingToNextPage(heading, pageIndex, pages);
+                    console.log('Orphaned heading (third column, near bottom) - moving to next page:', heading.textContent.substring(0, 50), 
+                        'distance from bottom:', distanceFromBottom, 'line height:', lineHeight, 'vertical diff:', verticalDiff, 'column index:', headingColumnIndex);
+                } else {
+                    heading.classList.add('force-column-break');
+                    console.log('Orphaned heading (near bottom) - forcing column break:', heading.textContent.substring(0, 50), 
+                        'distance from bottom:', distanceFromBottom, 'line height:', lineHeight, 'vertical diff:', verticalDiff, 'column index:', headingColumnIndex);
+                }
+            }
+        });
+    }
+}
 
 // Add page numbers to pages 2+ in the bottom right corner
 function addPageNumbers() {
@@ -3886,6 +5135,9 @@ function applyModeToPages() {
         // Add the current mode class if not 'normal'
         if (mode && mode !== 'normal') {
             page.classList.add(`mode-${mode}`);
+            console.log(`Added mode-${mode} to page`);
+        } else {
+            console.log('Mode is normal, no class added');
         }
     });
     

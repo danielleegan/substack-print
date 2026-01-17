@@ -729,12 +729,145 @@ header ~ p a {
     background: none;
     border-top: 1px solid #000;
     }
+    
+    /* CRITICAL: Safari doesn't support CSS columns in print mode reliably */
+    /* JavaScript will split content into 3 flex columns for Safari */
+    /* For other browsers, keep CSS columns */
+    .article-columns-three-css {
+        /* For non-Safari browsers, keep CSS columns */
+        column-count: 3 !important;
+        -webkit-column-count: 3 !important;
+        -moz-column-count: 3 !important;
+        column-gap: 0.25in !important;
+        -webkit-column-gap: 0.25in !important;
+        -moz-column-gap: 0.25in !important;
+        column-rule: 1px solid #000 !important;
+        -webkit-column-rule: 1px solid #000 !important;
+        -moz-column-rule: 1px solid #000 !important;
+        column-fill: balance !important;
+        -webkit-column-fill: balance !important;
+        -moz-column-fill: balance !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        display: block !important;
+    }
+    
+    /* Safari print columns created by JavaScript */
+    /* Use CSS Grid instead of float for better control in print */
+    .article-columns-three-css[data-safari-print-split="true"] {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr 1fr !important;
+        grid-column-gap: 0.25in !important;
+        column-count: 1 !important;
+        -webkit-column-count: 1 !important;
+        -moz-column-count: 1 !important;
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+    
+    .safari-print-column {
+        display: block !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        min-height: 1px !important;
+        position: relative !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    /* Add vertical dividers between columns - only use border, no ::after */
+    .safari-print-column:nth-child(1),
+    .safari-print-column:nth-child(2) {
+        border-right: 1px solid #000 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        padding-right: 0.125in !important;
+    }
+    
+    /* Remove any ::after pseudo-elements that might create duplicate dividers */
+    .safari-print-column::after {
+        display: none !important;
+        content: none !important;
+    }
+    
+    /* Fix page layout - ensure content starts at top of page */
+    .newsletter-page {
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+        padding-top: 0.25in !important;
+        padding-bottom: 0.25in !important;
+        page-break-after: always !important;
+        page-break-inside: avoid !important;
+        min-height: 11in !important;
+        max-height: 11in !important;
+        overflow: hidden !important;
+    }
+    
+    .newsletter-content {
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        height: auto !important;
+        max-height: calc(11in - 0.5in - var(--masthead-height, 1.5in)) !important;
+        overflow: visible !important;
+    }
+    
+    /* Ensure article columns don't have extra spacing */
+    .article-columns-three-css {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+    
+    /* Ensure images display in print - both in Safari columns and regular columns */
+    .safari-print-column img,
+    .article-columns-three-css img {
+        max-width: 100% !important;
+        width: auto !important;
+        height: auto !important;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    
+    /* Ensure image containers display and preserve their structure */
+    .safari-print-column .article-image,
+    .safari-print-column .image-with-caption-wrapper,
+    .safari-print-column figure,
+    .safari-print-column .featured-image {
+        display: block !important;
+        visibility: visible !important;
+        max-width: 100% !important;
+        margin: 12px 0 !important;
+    }
+    
+    /* Preserve image captions */
+    .safari-print-column .image-caption,
+    .safari-print-column figcaption {
+        display: block !important;
+        visibility: visible !important;
+    }
+    
+    .safari-print-column > * {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+    }
 }
 
 /* If no subtitle exists, add divider to title */
 .article-title.no-subtitle {
     padding-bottom: 18px;
     margin-bottom: 12px;
+}
+
+/* Remove spacing for article titles in left column (articles 2 and 3) on front page */
+.article-col-left .article-title.no-subtitle {
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
 }
 
 /* Disable ::after pseudo-element bars for front page titles since we're using HTML elements now */
