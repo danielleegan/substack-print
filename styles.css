@@ -1595,9 +1595,7 @@ header ~ p a {
 .article-columns-three-css [class*="footnotes"] li,
 .article-columns-three-css [id*="footnote"] li,
 .article-columns-three-css [id*="footnotes"] li,
-.article-columns-three-css ol.footnotes-list li,
-.article-columns-three-css ul li,
-.article-columns-three-css ol li {
+.article-columns-three-css ol.footnotes-list li {
     margin-bottom: 0.125in;
     line-height: 1.4;
     text-align: justify;
@@ -1767,6 +1765,22 @@ header ~ p a {
     overflow-wrap: break-word;
     max-width: 100%;
     box-sizing: border-box;
+}
+
+/* Normal article lists (NOT footnotes): keep bullets for <ul> and numbers for <ol> */
+.article-columns-three-css ul:not(.footnotes-list),
+.article-columns-three-css ol:not(.footnotes-list) {
+    list-style-position: outside;
+}
+
+.article-columns-three-css ul:not(.footnotes-list) li {
+    list-style-type: disc;
+    display: list-item;
+}
+
+.article-columns-three-css ol:not(.footnotes-list) li {
+    list-style-type: decimal;
+    display: list-item;
 }
 
 .article-columns-three-css li {

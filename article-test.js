@@ -41,14 +41,20 @@ function preprocessRSSContent(htmlContent, articleIndex = null) {
     }
     
     // Process footnote lists
-    const footnoteSelectors = ['ol', 'ul', '[class*="footnote"]', '[class*="footnotes"]', '[id*="footnote"]', '[id*="footnotes"]'];
-    const allLists = new Set();
-    footnoteSelectors.forEach(selector => {
-        doc.querySelectorAll(selector).forEach(el => {
-            const items = el.querySelectorAll('li');
-            if (items.length > 0) allLists.add(el);
-        });
-    });
+    // IMPORTANT: Do NOT touch normal article lists (<ul>/<ol> in the body).
+    const footnoteListSelectors = [
+        'ol.footnotes-list',
+        'ul.footnotes-list',
+        '[class*="footnote"] ol',
+        '[class*="footnote"] ul',
+        '[class*="footnotes"] ol',
+        '[class*="footnotes"] ul',
+        '[id*="footnote"] ol',
+        '[id*="footnote"] ul',
+        '[id*="footnotes"] ol',
+        '[id*="footnotes"] ul'
+    ];
+    const allLists = new Set(Array.from(doc.querySelectorAll(footnoteListSelectors.join(','))));
     
     allLists.forEach(list => {
         const listItems = Array.from(list.querySelectorAll('li'));
@@ -89,28 +95,8 @@ function preprocessRSSContent(htmlContent, articleIndex = null) {
 function cleanHTMLContent(html) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
-    
-    // Flatten footnote lists
-    doc.querySelectorAll('ol, ul').forEach(list => {
-        const items = Array.from(list.querySelectorAll('li'));
-        items.forEach((li, index) => {
-            li.querySelectorAll('br').forEach(br => br.remove());
-            let num = '';
-            if (list.tagName === 'OL') {
-                num = (index + 1).toString();
-            } else {
-                const text = li.textContent || '';
-                const match = text.match(/^(\d+)\.?\s*/);
-                num = match ? match[1] : (index + 1).toString();
-            }
-            let text = li.textContent || '';
-            text = text.replace(/^\d+\.?\s*/, '').trim();
-            text = text.replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ').trim();
-            li.innerHTML = '';
-            const textNode = document.createTextNode(num + '. ' + text);
-            li.appendChild(textNode);
-        });
-    });
+    // NOTE: Don't flatten normal lists here (bullet/numbered lists in the article body).
+    // Footnotes are already normalized in preprocessRSSContent().
     
     html = doc.body.innerHTML;
     const doc2 = parser.parseFromString(html, 'text/html');

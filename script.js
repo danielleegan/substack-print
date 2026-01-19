@@ -149,29 +149,33 @@ function preprocessRSSContent(htmlContent, articleIndex = null) {
         }
     }
     
-    // Find all footnote lists (<ol> and <ul> that likely contain footnotes)
-    // Also check for elements with footnote-related classes/IDs
-    const footnoteSelectors = [
-        'ol',
-        'ul',
+    // Find footnote containers and ONLY footnote lists.
+    // IMPORTANT: Do NOT touch normal article lists (<ul>/<ol> in the body).
+    const footnoteContainerSelectors = [
         '[class*="footnote"]',
         '[class*="footnotes"]',
         '[id*="footnote"]',
         '[id*="footnotes"]'
     ];
+    const footnoteListSelectors = [
+        'ol.footnotes-list',
+        'ul.footnotes-list',
+        '[class*="footnote"] ol',
+        '[class*="footnote"] ul',
+        '[class*="footnotes"] ol',
+        '[class*="footnotes"] ul',
+        '[id*="footnote"] ol',
+        '[id*="footnote"] ul',
+        '[id*="footnotes"] ol',
+        '[id*="footnotes"] ul'
+    ];
     
-    const allLists = new Set();
+    const allLists = new Set(Array.from(doc.querySelectorAll(footnoteListSelectors.join(','))));
     const allFootnoteContainers = new Set();
     
-    // First, collect all footnote-related elements
-    footnoteSelectors.forEach(selector => {
+    // Collect footnote-related containers (for article-index tagging)
+    footnoteContainerSelectors.forEach(selector => {
         doc.querySelectorAll(selector).forEach(el => {
-            // Check if this looks like a footnote list (contains numbered items)
-            const items = el.querySelectorAll('li');
-            if (items.length > 0) {
-                allLists.add(el);
-            }
-            // Also collect any element with footnote classes/IDs (containers)
             const hasFootnoteClass = el.classList.toString().toLowerCase().includes('footnote');
             const hasFootnoteId = (el.id || '').toLowerCase().includes('footnote');
             if (hasFootnoteClass || hasFootnoteId) {
