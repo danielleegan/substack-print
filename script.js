@@ -1711,7 +1711,7 @@ async function processSubstackURL(url) {
     }
 }
 
-// --- Multi-Substack (article URLs) support ---
+// --- Choose Articles (article URLs) support ---
 // This reuses the same "article-test" approach:
 // fetch article HTML (proxy/allorigins) -> extract body_html -> preprocess/clean -> render newspaper
 
@@ -1951,8 +1951,8 @@ async function fetchSingleArticleURL(url, articleIndex) {
     };
 }
 
-// Multi-Substack mode now uses pasted ARTICLE URLs (article-test logic)
-async function processMultiPublicationURLs(urlsString, newspaperTitle = 'Multi-Substack') {
+// Choose Articles mode now uses pasted ARTICLE URLs (article-test logic)
+async function processMultiPublicationURLs(urlsString, newspaperTitle = 'Choose Articles') {
     const loadingEl = document.getElementById('loading');
     const errorEl = document.getElementById('error');
     const newsletterContainer = document.getElementById('newsletter-container');
@@ -1979,7 +1979,7 @@ async function processMultiPublicationURLs(urlsString, newspaperTitle = 'Multi-S
             normalizedUrls.map((u, i) => fetchSingleArticleURL(u, i))
         );
 
-        const title = (newspaperTitle || '').trim() || 'Multi-Substack';
+        const title = (newspaperTitle || '').trim() || 'Choose Articles';
         const publication = {
             title,
             description: '',
@@ -2024,14 +2024,14 @@ async function processMultiPublicationURLs(urlsString, newspaperTitle = 'Multi-S
         
         if (typeof posthog !== 'undefined') {
             posthog.capture('newsletter_generated', {
-                publication: 'MULTI-SUBSTACK',
+                publication: 'CHOOSE_ARTICLES',
                 article_count: articles.length,
                 mode: getCurrentMode(),
                 used_cache: false
             });
         }
     } catch (error) {
-        console.error('Error processing multi-substack URLs:', error);
+        console.error('Error processing choose-articles URLs:', error);
         loadingEl.classList.add('hidden');
         errorEl.textContent = 'Problem loading :( make sure each line is a full Substack ARTICLE URL like "publication.substack.com/p/post-slug" and if that doesn\'t work email me at bugs@substackprint.com';
         errorEl.classList.remove('hidden');
@@ -2039,7 +2039,7 @@ async function processMultiPublicationURLs(urlsString, newspaperTitle = 'Multi-S
         if (typeof posthog !== 'undefined') {
             posthog.capture('newsletter_error', {
                 error_message: error.message,
-                url: 'multi-substack'
+                url: 'choose-articles'
             });
         }
     }
@@ -2385,7 +2385,7 @@ document.getElementById('substack-form').addEventListener('submit', (e) => {
         if (!urlsString) return;
         
         if (typeof posthog !== 'undefined') {
-            posthog.capture('newsletter_requested', { url: 'multi-substack' });
+            posthog.capture('newsletter_requested', { url: 'choose-articles' });
         }
         
         processMultiPublicationURLs(urlsString, newspaperTitle);
@@ -5843,7 +5843,7 @@ document.addEventListener('DOMContentLoaded', () => {
         processSubstackURL(defaultURL);
     }
 
-    // Publication mode toggle (One Substack vs Multi-Substack)
+    // Publication mode toggle (One Substack vs Choose Articles)
     const singleFields = document.getElementById('single-publication-fields');
     const multiFields = document.getElementById('multi-publication-fields');
     const singleInput = document.getElementById('substack-url');
@@ -5871,7 +5871,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (newsletterEl) newsletterEl.innerHTML = '';
         updateMobileElements();
 
-        // Auto-generate on first switch to Multi-Substack (mirrors One Substack auto-load)
+        // Auto-generate on first switch to Choose Articles (mirrors One Substack auto-load)
         if (isMulti && multiInput) {
             const hasAutoLoaded = multiFields?.dataset?.autoLoaded === 'true';
             const urlsString = (multiInput.value || '').trim();

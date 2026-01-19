@@ -179,7 +179,7 @@ form {
     }
 }
 
-/* Author line under titles (Multi-Substack uses this) */
+/* Author line under titles (Choose Articles uses this) */
 .article-author {
     font-style: italic;
     font-size: 0.8em;
@@ -189,7 +189,7 @@ form {
     text-indent: 0 !important;
 }
 
-/* Multi-Substack footer disclaimer */
+/* Choose Articles footer disclaimer */
 .multi-substack-disclaimer {
     font-size: inherit; /* match newspaper body text */
     line-height: 1.5;
