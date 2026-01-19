@@ -1813,15 +1813,33 @@ function extractArticleDataFromHTML(html) {
             doc.querySelector('link[rel="alternate"][type="application/rss+xml"][href*="/feed"]');
         const substackName = rssLink?.getAttribute('title')?.trim() || '';
 
+        const cleanSubstackTitle = (rawTitle) => {
+            const t = (rawTitle || '').trim();
+            if (!t) return '';
+            // Common Substack <title> formats:
+            // "Post title - by Author - Publication"
+            // "Post title | Publication"
+            // Only strip obvious suffixes; prefer <h1> when available.
+            const byIdx = t.toLowerCase().indexOf(' - by ');
+            if (byIdx > 0) return t.slice(0, byIdx).trim();
+            const pipeIdx = t.indexOf('|');
+            if (pipeIdx > 0) return t.slice(0, pipeIdx).trim();
+            return t;
+        };
+        // Substack post title is typically: <h1 class="post-title ...">Title</h1>
+        const h1Title =
+            doc.querySelector('h1.post-title')?.textContent?.trim() ||
+            doc.querySelector('h1[class*="post-title"]')?.textContent?.trim() ||
+            doc.querySelector('h1')?.textContent?.trim() ||
+            '';
+        const ogTitle = doc.querySelector('meta[property="og:title"]')?.getAttribute('content')?.trim() || '';
+        const docTitle = doc.querySelector('title')?.textContent?.trim() || '';
+        const bestTitle = cleanSubstackTitle(h1Title || ogTitle || docTitle) || 'No title found';
+
         const bodyMarkup = doc.querySelector('.body.markup, .body-markup, [class*="body"][class*="markup"]');
         if (bodyMarkup) {
-            const title =
-                doc.querySelector('title')?.textContent ||
-                doc.querySelector('h1')?.textContent ||
-                doc.querySelector('[class*="title"]')?.textContent ||
-                'No title found';
             return {
-                title,
+                title: bestTitle,
                 body_html: bodyMarkup.innerHTML,
                 body_text: bodyMarkup.textContent || bodyMarkup.innerText,
                 author: metaAuthor,
@@ -1842,9 +1860,8 @@ function extractArticleDataFromHTML(html) {
         for (const selector of altSelectors) {
             const element = doc.querySelector(selector);
             if (element) {
-                const title = doc.querySelector('title')?.textContent || 'No title found';
                 return {
-                    title,
+                    title: bestTitle,
                     body_html: element.innerHTML,
                     body_text: element.textContent || element.innerText,
                     author: metaAuthor,
