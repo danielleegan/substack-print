@@ -3,8 +3,8 @@
 // Cloudflare Worker proxy URL (same as main script)
 const CLOUDFLARE_PROXY_URL = 'https://substack-rss-proxy.daniellescoolemail.workers.dev';
 
-// Copy of preprocessRSSContent from main script
-function preprocessRSSContent(htmlContent) {
+// Copy of preprocessRSSContent from main script (with articleIndex support)
+function preprocessRSSContent(htmlContent, articleIndex = null) {
     if (!htmlContent || typeof htmlContent !== 'string') {
         return htmlContent;
     }
@@ -133,6 +133,65 @@ function cleanHTMLContent(html) {
             el.remove();
         });
     });
+
+    // Remove Substack video embeds (they often leave a blank fixed-height wrapper in print)
+    const videoPlayers = Array.from(doc2.querySelectorAll('[data-component-name="VideoEmbedPlayer"]'));
+    if (videoPlayers.length > 0) {
+        const isEffectivelyEmpty = (el) => {
+            if (!el) return false;
+            // Consider an element "empty" if it has no non-whitespace text and no meaningful media/content nodes.
+            const text = (el.textContent || '').replace(/\s+/g, '').trim();
+            if (text.length > 0) return false;
+            // If it has any element children (besides trivial breaks), treat as non-empty.
+            const meaningfulChild = el.querySelector('img, picture, svg, video, audio, source, iframe, embed, object, table, ul, ol, blockquote, pre, h1, h2, h3, h4, h5, h6');
+            return !meaningfulChild;
+        };
+
+        const removeEmptyParents = (startEl) => {
+            let current = startEl;
+            while (current && current !== doc2.body) {
+                // Only prune common block wrappers to avoid accidentally removing structure.
+                const tag = (current.tagName || '').toUpperCase();
+                if (!['DIV', 'P', 'FIGURE', 'SECTION', 'ARTICLE'].includes(tag)) break;
+                if (!isEffectivelyEmpty(current)) break;
+                const parent = current.parentElement;
+                current.remove();
+                current = parent;
+            }
+        };
+
+        videoPlayers.forEach(player => {
+            if (!player || !player.parentElement) return;
+
+            // Prefer removing a dedicated wrapper (figure/component wrapper) if it contains nothing else.
+            const wrapperCandidates = [
+                player.closest('figure'),
+                player.closest('[data-component-name="VideoEmbed"]'),
+                player.closest('[data-component-name="VideoEmbedWithCaption"]'),
+                player.closest('[data-component-name="Embed"]'),
+            ].filter(Boolean);
+
+            let removed = false;
+            for (const wrapper of wrapperCandidates) {
+                if (!wrapper || wrapper === doc2.body) continue;
+                const clone = wrapper.cloneNode(true);
+                clone.querySelectorAll('[data-component-name="VideoEmbedPlayer"]').forEach(el => el.remove());
+                if (isEffectivelyEmpty(clone)) {
+                    const parent = wrapper.parentElement;
+                    wrapper.remove();
+                    removeEmptyParents(parent);
+                    removed = true;
+                    break;
+                }
+            }
+
+            if (!removed) {
+                const parent = player.parentElement;
+                player.remove();
+                removeEmptyParents(parent);
+            }
+        });
+    }
     
     // Handle links
     doc2.querySelectorAll('a').forEach(link => {
@@ -227,6 +286,192 @@ function findMainImage(doc) {
     
     // Strategy 4: Fall back to first image in the document
     return doc.querySelector('img');
+}
+
+// Generate full newsletter with all articles and pages (same as main script)
+function generateNewsletterForTest(publication, articles) {
+    const modeClass = ''; // Default to normal mode for test
+    // Get current date in PST/PDT timezone
+    const now = new Date();
+    const pstFormatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Los_Angeles',
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric'
+    });
+    const parts = pstFormatter.formatToParts(now);
+    const year = parseInt(parts.find(p => p.type === 'year').value);
+    const month = parseInt(parts.find(p => p.type === 'month').value) - 1;
+    const day = parseInt(parts.find(p => p.type === 'day').value);
+    const pstDate = new Date(year, month, day);
+    
+    const headerDate = formatHeaderDate(pstDate);
+    const establishedYear = publication.establishedDate ? formatYear(publication.establishedDate) : new Date().getFullYear();
+    
+    let html = `
+        <div class="newsletter-page front-page${modeClass}">
+            <div class="newsletter-masthead">
+                <div class="masthead-top-url"><img src="logo.png" alt="Substack Print Logo"></div>
+                <div class="masthead-title">${publication.title || 'SUBSCRIPTION'}</div>
+                <div class="masthead-tagline">${publication.description || ''}</div>
+                <div class="masthead-divider"></div>
+                <div class="masthead-info-row">
+                    <span class="volume">VOL. LXXVI</span>
+                    <span class="date">${headerDate}</span>
+                    <span class="established">EST. ${establishedYear}</span>
+                </div>
+                <div class="masthead-divider"></div>
+            </div>
+            <div class="newsletter-content">
+    `;
+    
+    // Article 1 (most recent) goes on right side, Articles 2-3 on left side
+    if (articles.length >= 1) {
+        const article1 = articles[0];
+        const article2 = articles[1] || null;
+        const article3 = articles[2] || null;
+        
+        // Process Article 1 (right side)
+        const parser = new DOMParser();
+        const contentDoc1 = parser.parseFromString(article1.content, 'text/html');
+        const mainImage = findMainImage(contentDoc1);
+        let imageHTML = '';
+        
+        if (mainImage) {
+            const imgSrc = mainImage.getAttribute('src') || mainImage.getAttribute('data-src') || '';
+            const parentFigure = mainImage.closest('figure');
+            const figcaption = parentFigure ? parentFigure.querySelector('figcaption, .image-caption') : contentDoc1.querySelector('figcaption, .image-caption');
+            const imageCaption = figcaption ? figcaption.textContent : '';
+            mainImage.remove();
+            if (figcaption) figcaption.remove();
+            if (parentFigure && parentFigure.children.length === 0) {
+                parentFigure.remove();
+            }
+            
+            imageHTML = `
+                <div class="featured-image">
+                    <img src="${imgSrc}" alt="${article1.title}">
+                    ${imageCaption ? `<div class="image-caption">${imageCaption}</div>` : ''}
+                </div>
+            `;
+        }
+        
+        const allElements1 = Array.from(contentDoc1.body.children);
+        const article1ContentPage1 = allElements1.map(el => el.outerHTML).join('');
+        
+        let article2Page = 2;
+        let article3Page = 3;
+        
+        html += `
+            <div class="article-featured">
+                <div class="article-columns">
+                    <div class="article-col-left">
+        `;
+        
+        // Article 2 section (top)
+        if (article2) {
+            const contentDoc2 = parser.parseFromString(article2.content, 'text/html');
+            const paragraphs2 = Array.from(contentDoc2.querySelectorAll('p'));
+            const allParagraphs2 = paragraphs2.map(p => p.outerHTML).join('');
+            const snippet2 = paragraphs2.slice(0, Math.min(2, paragraphs2.length))
+                .map(p => p.outerHTML).join('');
+            
+            html += `
+                        <div class="article-section" data-full-content="${allParagraphs2.replace(/"/g, '&quot;')}">
+                            <h2 class="article-title">${article2.title}</h2>
+                            <div class="article-title-bar-front"></div>
+                            <div class="article-snippet">${snippet2}</div>
+                            <div class="article-continued">See Page ${article2Page}</div>
+                        </div>
+            `;
+        }
+        
+        // Article 3 section (middle) - includes first image
+        if (article3) {
+            const contentDoc3 = parser.parseFromString(article3.content, 'text/html');
+            const mainImage3 = findMainImage(contentDoc3);
+            let imageHTML3 = '';
+            
+            if (mainImage3) {
+                const imgSrc3 = mainImage3.getAttribute('src') || mainImage3.getAttribute('data-src') || '';
+                const parentFigure3 = mainImage3.closest('figure');
+                const figcaption3 = parentFigure3 ? parentFigure3.querySelector('figcaption, .image-caption') : contentDoc3.querySelector('figcaption, .image-caption');
+                const imageCaption3 = figcaption3 ? figcaption3.textContent : '';
+                mainImage3.remove();
+                if (figcaption3) figcaption3.remove();
+                if (parentFigure3 && parentFigure3.children.length === 0) {
+                    parentFigure3.remove();
+                }
+                
+                imageHTML3 = `
+                    <div class="article-image">
+                        <img src="${imgSrc3}" alt="${article3.title}">
+                        ${imageCaption3 ? `<div class="image-caption">${imageCaption3}</div>` : ''}
+                    </div>
+                `;
+            }
+            
+            const paragraphs3 = Array.from(contentDoc3.querySelectorAll('p'));
+            const allParagraphs3 = paragraphs3.map(p => p.outerHTML).join('');
+            const snippet3 = paragraphs3.slice(0, Math.min(2, paragraphs3.length))
+                .map(p => p.outerHTML).join('');
+            
+            html += `
+                        <div class="article-section" data-full-content="${allParagraphs3.replace(/"/g, '&quot;')}">
+                            <h2 class="article-title">${article3.title}</h2>
+                            <div class="article-title-bar-front"></div>
+                            ${imageHTML3}
+                            <div class="article-snippet">${snippet3}</div>
+                            <div class="article-continued">See Page ${article3Page}</div>
+                        </div>
+            `;
+        }
+        
+        html += `
+                    </div>
+                    <div class="article-col-right">
+                        ${imageHTML}
+                        <h2 class="article-title">${article1.title}</h2>
+                        <div class="article-title-bar-front"></div>
+                        <div class="article-content-right">${article1ContentPage1}</div>
+                        ${article1ContentPage1.trim().length > 0 ? '<div class="article-continued">Continued on Page 2</div>' : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    html += `
+            </div>
+        </div>
+    `;
+    
+    // Create additional pages with all remaining articles
+    if (articles.length > 1) {
+        let allContent = '';
+        
+        // Add all remaining articles (articles 2, 3, etc.)
+        for (let i = 1; i < articles.length; i++) {
+            const article = articles[i];
+            allContent += `<h2 class="article-title">${article.title}</h2>`;
+            allContent += '<div class="article-title-bar"></div>';
+            allContent += article.content;
+        }
+        
+        // Put all content in a single page - CSS columns will handle natural flow
+        // Pages will be created dynamically after rendering if content overflows
+        html += `
+            <div class="newsletter-page${modeClass}">
+                <div class="newsletter-content">
+                    <div class="article-columns-three-css">
+                        ${allContent}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    return html;
 }
 
 // Simplified newsletter generation for single article
@@ -647,28 +892,54 @@ function extractArticleDataFromJSON(jsonData) {
 }
 
 
-// Main function to process article URL
-async function processArticleURL(url) {
+// Main function to process multiple article URLs (comma-separated)
+async function processArticleURLs(urlsString) {
+    // Parse comma-separated URLs
+    const urlStrings = urlsString.split(/[\n,]+/)
+        .map(url => url.trim())
+        .filter(url => url.length > 0);
+    
+    if (urlStrings.length === 0) {
+        throw new Error('No valid URLs provided');
+    }
+    
     const loadingEl = document.getElementById('loading');
     const errorEl = document.getElementById('error');
-    const resultEl = document.getElementById('result');
-    const articleTitleEl = document.getElementById('article-title');
-    const articleBodyRawEl = document.getElementById('article-body-raw');
-    const articleBodyPreviewEl = document.getElementById('article-body-preview');
-    const jsonDataEl = document.getElementById('json-data');
+    const newsletterContainer = document.getElementById('newsletter-container-test');
     
-    // Show loading, hide error and result
     loadingEl.classList.remove('hidden');
-    loadingEl.textContent = 'Fetching article...';
+    loadingEl.textContent = `Fetching ${urlStrings.length} article(s)...`;
     errorEl.classList.add('hidden');
-    resultEl.classList.add('hidden');
+    if (newsletterContainer) newsletterContainer.classList.add('hidden');
+    
+    try {
+        // Fetch all articles in parallel - pass articleIndex (0, 1, 2) like main script
+        const articlePromises = urlStrings.map((url, index) => 
+            fetchSingleArticle(url, index) // articleIndex: 0, 1, 2 (same as main script)
+        );
+        
+        const articles = await Promise.all(articlePromises);
+        
+        // Process all articles and generate newsletter (using same format as main script)
+        await processMultipleArticles(articles);
+        
+    } catch (error) {
+        console.error('Error processing article URLs:', error);
+        loadingEl.classList.add('hidden');
+        errorEl.textContent = `Error: ${error.message}`;
+        errorEl.classList.remove('hidden');
+    }
+}
+
+// Fetch a single article and return it in RSS format (same structure as main script)
+// Returns: { title, content, isFeatured, articleData }
+async function fetchSingleArticle(url, articleIndex) {
     
     try {
         // Normalize URL
         const normalizedUrl = url.startsWith('http') ? url : `https://${url}`;
         
         // Try to fetch article HTML via proxy first, then fallback to allorigins
-        loadingEl.textContent = 'Fetching article HTML via Cloudflare Worker proxy...';
         let html = null;
         let fetchMethod = 'Cloudflare Worker';
         
@@ -676,7 +947,6 @@ async function processArticleURL(url) {
             html = await fetchArticleViaProxy(normalizedUrl);
         } catch (proxyError) {
             console.log('Cloudflare Worker proxy failed, trying allorigins fallback...', proxyError);
-            loadingEl.textContent = 'Cloudflare Worker failed, trying allorigins proxy...';
             try {
                 html = await fetchArticleViaAllOrigins(normalizedUrl);
                 fetchMethod = 'allorigins';
@@ -689,8 +959,6 @@ async function processArticleURL(url) {
             throw new Error('Failed to fetch article HTML (empty response)');
         }
         
-        loadingEl.textContent = `Extracting article data (fetched via ${fetchMethod})...`;
-        
         // Try extracting from HTML DOM first (more reliable)
         let articleData = extractArticleDataFromHTML(html);
         let extractionMethod = 'HTML DOM';
@@ -698,7 +966,6 @@ async function processArticleURL(url) {
         // If HTML extraction failed, try JSON extraction
         if (!articleData) {
             console.log('HTML DOM extraction failed, trying JSON extraction...');
-            loadingEl.textContent = `Extracting from JSON data (fetched via ${fetchMethod})...`;
             
             const jsonData = extractJSONData(html);
             
@@ -709,107 +976,59 @@ async function processArticleURL(url) {
         }
         
         if (!articleData) {
-            // Show the HTML we got for debugging
-            console.log('HTML sample:', html.substring(0, 2000));
-            console.log('Trying to find body markup in HTML...');
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
-            const bodyMarkup = doc.querySelector('.body.markup, .body-markup');
-            console.log('Found body markup?', bodyMarkup !== null);
-            if (bodyMarkup) {
-                console.log('Body markup HTML length:', bodyMarkup.innerHTML.length);
-            }
-            
-            throw new Error('Could not find article data in page. Tried both HTML DOM extraction and JSON extraction. Check console for details.');
+            throw new Error('Could not find article data in page. Tried both HTML DOM extraction and JSON extraction.');
         }
         
-        console.log(`Successfully extracted article data using: ${extractionMethod}`);
+        console.log(`Successfully extracted article ${articleIndex + 1} data using: ${extractionMethod}`);
         
         // Process the HTML through the same functions as RSS feed
-        loadingEl.textContent = 'Processing content (matching RSS feed format)...';
-        
         let processedContent = articleData.body_html || '';
         
-        // Step 1: Preprocess (handle footnotes)
-        console.log('Step 1: Preprocessing RSS content...');
-        processedContent = preprocessRSSContent(processedContent);
+        // Step 1: Preprocess (handle footnotes) - pass articleIndex to mark footnotes
+        processedContent = preprocessRSSContent(processedContent, articleIndex);
         
         // Step 2: Clean HTML (remove unwanted elements, handle links)
-        console.log('Step 2: Cleaning HTML content...');
         processedContent = cleanHTMLContent(processedContent);
         
-        // Format to match RSS feed structure
-        const rssFormattedArticle = {
+        // Return article in RSS format structure (same as main script)
+        return {
             title: articleData.title || 'No title',
             content: processedContent,
-            isFeatured: true // First article is always featured
+            isFeatured: articleIndex === 0, // First article (index 0) is featured
+            articleData: articleData,
+            articleIndex: articleIndex
         };
         
-        console.log('Formatted article (RSS format):', {
-            title: rssFormattedArticle.title,
-            contentLength: rssFormattedArticle.content.length,
-            isFeatured: rssFormattedArticle.isFeatured
-        });
-        
-        // Display results
-        articleTitleEl.textContent = `${rssFormattedArticle.title} (RSS Format - extracted via ${articleData.extracted_from || extractionMethod})`;
-        
-        // Show processed HTML (RSS format) - truncated if too long
-        const processedHTML = rssFormattedArticle.content || 'No content found';
-        articleBodyRawEl.textContent = processedHTML.length > 5000 
-            ? processedHTML.substring(0, 5000) + '\n\n... (truncated, total length: ' + processedHTML.length + ' characters)'
-            : processedHTML;
-        
-        // Show preview (rendered processed HTML)
-        articleBodyPreviewEl.innerHTML = processedHTML || '<p>No content to display</p>';
-        
-        // Show RSS format structure and metadata
-        let metadataText = `=== RSS FORMAT STRUCTURE ===\n\n`;
-        metadataText += `Article Object:\n`;
-        metadataText += `{\n`;
-        metadataText += `  title: "${rssFormattedArticle.title}",\n`;
-        metadataText += `  content: "${processedHTML.substring(0, 100)}...", // (${processedHTML.length} chars total)\n`;
-        metadataText += `  isFeatured: ${rssFormattedArticle.isFeatured}\n`;
-        metadataText += `}\n\n`;
-        metadataText += `=== METADATA ===\n\n`;
-        metadataText += `Extraction Method: ${articleData.extracted_from || extractionMethod}\n`;
-        if (articleData.author) metadataText += `Author: ${articleData.author}\n`;
-        if (articleData.publication) metadataText += `Publication: ${articleData.publication}\n`;
-        if (articleData.published_at) metadataText += `Published: ${articleData.published_at}\n`;
-        metadataText += `\nProcessing Steps:\n`;
-        metadataText += `1. Extracted HTML from DOM: ${(articleData.body_html || '').length} chars\n`;
-        metadataText += `2. Preprocessed (footnotes): ${processedHTML.length} chars\n`;
-        metadataText += `3. Cleaned (removed unwanted elements): ${processedHTML.length} chars\n`;
-        metadataText += `\nFinal Content Length: ${processedHTML.length} characters\n`;
-        
-        // Try to extract and show JSON data if available
-        const jsonData = extractJSONData(html);
-        if (jsonData) {
-            const jsonString = JSON.stringify(jsonData, null, 2);
-            jsonDataEl.textContent = metadataText + '\n\n--- Original JSON Data (for reference) ---\n\n' + 
-                (jsonString.length > 5000 
-                    ? jsonString.substring(0, 5000) + '\n\n... (truncated, total length: ' + jsonString.length + ' characters)'
-                    : jsonString);
-        } else {
-            jsonDataEl.textContent = metadataText + '\n\n--- Original JSON Data ---\n\nCould not extract JSON data from page.';
+    } catch (error) {
+        console.error(`Error fetching article ${articleIndex + 1}:`, error);
+        throw error;
+    }
+}
+
+// Process multiple articles and display results + generate newsletter
+async function processMultipleArticles(articles) {
+    const loadingEl = document.getElementById('loading');
+    const errorEl = document.getElementById('error');
+    
+    try {
+        if (!articles || articles.length === 0) {
+            throw new Error('No articles to process');
         }
         
-        // Generate and display newsletter format
-        loadingEl.textContent = 'Generating newspaper format...';
+        loadingEl.textContent = 'Processing articles and generating newsletter format...';
         
+        const firstArticle = articles[0];
+        
+        // Generate newsletter format using same structure as main script
+        // Get publication info from first article
         const publication = {
-            title: articleData.publication || 'SUBSCRIPTION',
-            description: articleData.publication ? '' : 'Test Publication',
-            establishedDate: articleData.published_at ? new Date(articleData.published_at) : null
+            title: firstArticle.articleData?.publication || 'SUBSCRIPTION',
+            description: '',
+            establishedDate: firstArticle.articleData?.published_at ? new Date(firstArticle.articleData.published_at) : null
         };
         
-        const rssFormattedArticleForNewsletter = {
-            title: rssFormattedArticle.title,
-            content: processedHTML,
-            isFeatured: true
-        };
-        
-        const newsletterHTML = generateNewsletterForArticle(publication, rssFormattedArticleForNewsletter);
+        // Generate full newsletter with all articles and pages (same as main script)
+        const newsletterHTML = generateNewsletterForTest(publication, articles);
         
         const newsletterContainer = document.getElementById('newsletter-container-test');
         const newsletterPreview = document.getElementById('newsletter-preview');
@@ -817,26 +1036,298 @@ async function processArticleURL(url) {
         if (newsletterContainer && newsletterPreview) {
             newsletterPreview.innerHTML = newsletterHTML;
             newsletterContainer.classList.remove('hidden');
+            
+            // Trim Article 1 to fit on front page, then split pages (same as main script)
+            setTimeout(() => {
+                try {
+                    trimArticle1ToFitForTest(newsletterPreview);
+                } catch (e) {
+                    console.error('Error in trimArticle1ToFitForTest:', e);
+                }
+                
+                // Split pages dynamically after trimming Article 1
+                setTimeout(() => {
+                    splitPagesDynamicallyForTest(newsletterPreview);
+                }, 100);
+            }, 100);
         }
         
         loadingEl.classList.add('hidden');
         
-        // Show results
-        loadingEl.classList.add('hidden');
-        resultEl.classList.remove('hidden');
-        
-        console.log('Successfully extracted article data:', {
-            title: articleData.title,
-            bodyLength: articleData.body_html?.length || 0,
-            publication: articleData.publication,
-            author: articleData.author
-        });
-        
     } catch (error) {
-        console.error('Error processing article URL:', error);
+        console.error('Error processing multiple articles:', error);
         loadingEl.classList.add('hidden');
         errorEl.textContent = `Error: ${error.message}`;
         errorEl.classList.remove('hidden');
+    }
+}
+
+// Trim Article 1 to fit on front page (matches main script's trimArticle1ToFit)
+function trimArticle1ToFitForTest(container) {
+    try {
+        const firstPage = container.querySelector('.newsletter-page');
+        if (!firstPage) {
+            console.log('trimArticle1ToFitForTest: No first page found');
+            return;
+        }
+        
+        const article1Content = firstPage.querySelector('.article-col-right .article-content-right');
+        if (!article1Content) {
+            console.log('trimArticle1ToFitForTest: No article-content-right found');
+            return;
+        }
+        
+        const articleColRight = firstPage.querySelector('.article-col-right');
+        if (!articleColRight) {
+            console.log('trimArticle1ToFitForTest: No article-col-right found');
+            return;
+        }
+        
+        // Get max height available
+        const pagePadding = parseFloat(getComputedStyle(firstPage).paddingTop) + parseFloat(getComputedStyle(firstPage).paddingBottom);
+        const masthead = firstPage.querySelector('.newsletter-masthead');
+        const mastheadHeight = masthead ? masthead.offsetHeight : 0;
+        
+        const pageHeight = parseFloat(getComputedStyle(firstPage).height);
+        const maxContentHeight = pageHeight - pagePadding - mastheadHeight;
+        
+        articleColRight.offsetHeight;
+        
+        // Calculate used height for fixed elements
+        const image = articleColRight.querySelector('.featured-image');
+        const title = articleColRight.querySelector('.article-title');
+        const titleBar = articleColRight.querySelector('.article-title-bar-front');
+        const continued = articleColRight.querySelector('.article-continued');
+        
+        let usedHeight = 0;
+        if (image) {
+            const imgStyle = getComputedStyle(image);
+            usedHeight += image.offsetHeight + parseFloat(imgStyle.marginTop) + parseFloat(imgStyle.marginBottom);
+        }
+        if (title) {
+            const titleStyle = getComputedStyle(title);
+            usedHeight += title.offsetHeight + parseFloat(titleStyle.marginTop) + parseFloat(titleStyle.marginBottom);
+        }
+        if (titleBar) {
+            usedHeight += 14.5; // Fixed height for article-title-bar-front
+        }
+        
+        let continuedHeight = 45;
+        if (continued) {
+            const contStyle = getComputedStyle(continued);
+            const actualHeight = continued.offsetHeight + parseFloat(contStyle.marginTop) + parseFloat(contStyle.marginBottom);
+            continuedHeight = Math.max(actualHeight + 15, 45);
+        }
+        usedHeight += continuedHeight;
+        
+        const availableHeight = maxContentHeight - usedHeight - 30; // 30px safety margin
+        
+        articleColRight.offsetHeight;
+        article1Content.offsetHeight;
+        
+        const actualContentHeight = article1Content.scrollHeight;
+        
+        if (actualContentHeight > availableHeight + 10) {
+            // Content overflows - trim it
+            const elements = Array.from(article1Content.children);
+            let fittingContent = '';
+            let remainingContent = '';
+            
+            const tempContainer = document.createElement('div');
+            tempContainer.className = 'article-snippet';
+            tempContainer.style.position = 'absolute';
+            tempContainer.style.visibility = 'hidden';
+            tempContainer.style.width = article1Content.offsetWidth + 'px';
+            tempContainer.style.fontSize = getComputedStyle(article1Content).fontSize;
+            tempContainer.style.lineHeight = getComputedStyle(article1Content).lineHeight;
+            document.body.appendChild(tempContainer);
+            
+            try {
+                for (let i = 0; i < elements.length; i++) {
+                    const element = elements[i];
+                    const elementHTML = element.outerHTML;
+                    
+                    tempContainer.innerHTML = fittingContent + elementHTML;
+                    tempContainer.offsetHeight;
+                    const testHeight = tempContainer.scrollHeight;
+                    
+                    if (testHeight <= availableHeight) {
+                        fittingContent += elementHTML;
+                    } else {
+                        // Element doesn't fit - try to split it
+                        if (element.tagName === 'P') {
+                            const text = element.textContent;
+                            const words = text.split(/\s+/);
+                            
+                            let fittingText = '';
+                            let fittingWords = [];
+                            
+                            for (let j = 0; j < words.length; j++) {
+                                const testWords = [...fittingWords, words[j]];
+                                const testText = testWords.join(' ');
+                                tempContainer.innerHTML = fittingContent + `<p>${testText}</p>`;
+                                tempContainer.offsetHeight;
+                                const wordTestHeight = tempContainer.scrollHeight;
+                                
+                                if (wordTestHeight <= availableHeight) {
+                                    fittingWords.push(words[j]);
+                                    fittingText = testText;
+                                } else {
+                                    break;
+                                }
+                            }
+                            
+                            if (fittingText) {
+                                fittingContent += `<p>${fittingText}</p>`;
+                                const remainingWords = words.slice(fittingWords.length);
+                                if (remainingWords.length > 0) {
+                                    const remainingText = remainingWords.join(' ');
+                                    remainingContent += `<p>${remainingText}</p>`;
+                                }
+                            } else {
+                                remainingContent += elementHTML;
+                            }
+                        } else {
+                            remainingContent += elementHTML;
+                        }
+                        
+                        // Add remaining elements
+                        for (let j = i + 1; j < elements.length; j++) {
+                            remainingContent += elements[j].outerHTML;
+                        }
+                        break;
+                    }
+                }
+            } finally {
+                if (tempContainer && tempContainer.parentNode) {
+                    document.body.removeChild(tempContainer);
+                }
+            }
+            
+            // Update content on front page
+            article1Content.innerHTML = fittingContent;
+            
+            // Add remaining content to page 2 (prepend to existing content)
+            const pages = container.querySelectorAll('.newsletter-page');
+            if (pages.length > 1 && remainingContent) {
+                const page2 = pages[1];
+                const page2Content = page2.querySelector('.article-columns-three-css');
+                if (page2Content) {
+                    page2Content.innerHTML = remainingContent + page2Content.innerHTML;
+                    console.log('trimArticle1ToFitForTest: Added remaining Article 1 content to page 2');
+                }
+            }
+        }
+    } catch (error) {
+        console.error('trimArticle1ToFitForTest error:', error);
+    }
+}
+
+// Simplified page splitting for test (matches main script's splitPagesDynamically)
+function splitPagesDynamicallyForTest(container) {
+    // Find pages within the container (not document-wide)
+    const pages = container.querySelectorAll('.newsletter-page');
+    if (pages.length === 0) return;
+    
+    // Process pages starting from page 2 (index 1) - skip front page
+    for (let pageIndex = 1; pageIndex < pages.length; pageIndex++) {
+        const page = pages[pageIndex];
+        const contentDiv = page.querySelector('.article-columns-three-css');
+        if (!contentDiv) continue;
+        
+        const contentArea = page.querySelector('.newsletter-content');
+        if (!contentArea) continue;
+        
+        // Calculate max height for content
+        const pageHeight = parseFloat(getComputedStyle(page).height) || 11 * 96;
+        const padding = parseFloat(getComputedStyle(page).paddingTop) + parseFloat(getComputedStyle(page).paddingBottom);
+        const maxHeight = pageHeight - padding || 10.5 * 96;
+        
+        if (!maxHeight || maxHeight <= 0) continue;
+        
+        // Check for overflow
+        const originalOverflow = contentDiv.style.overflow;
+        const originalMaxHeight = contentDiv.style.maxHeight;
+        
+        contentDiv.style.overflow = 'visible';
+        contentDiv.style.maxHeight = 'none';
+        contentDiv.offsetHeight;
+        
+        const contentHeight = contentDiv.scrollHeight;
+        const containerHeight = contentArea.clientHeight || maxHeight;
+        
+        contentDiv.style.overflow = originalOverflow;
+        contentDiv.style.maxHeight = originalMaxHeight;
+        
+        const hasOverflow = contentHeight > containerHeight * 1.05;
+        
+        if (hasOverflow) {
+            // Split content element by element
+            const elements = Array.from(contentDiv.children);
+            if (elements.length === 0) continue;
+            
+            let currentPage = page;
+            let currentContentDiv = contentDiv;
+            let currentPageContent = '';
+            
+            for (let i = 0; i < elements.length; i++) {
+                const element = elements[i];
+                const elementHTML = element.outerHTML;
+                const testContent = currentPageContent + elementHTML;
+                
+                // Test if adding element causes overflow
+                const testDiv = document.createElement('div');
+                testDiv.className = 'article-columns-three-css';
+                const computedStyle = getComputedStyle(contentDiv);
+                testDiv.style.position = 'absolute';
+                testDiv.style.visibility = 'hidden';
+                testDiv.style.width = contentDiv.offsetWidth + 'px';
+                testDiv.style.columnCount = computedStyle.columnCount || '3';
+                testDiv.style.columnGap = computedStyle.columnGap || '20px';
+                testDiv.style.maxHeight = maxHeight + 'px';
+                testDiv.innerHTML = testContent;
+                document.body.appendChild(testDiv);
+                
+                testDiv.offsetHeight;
+                const testMaxHeight = testDiv.style.maxHeight;
+                testDiv.style.maxHeight = 'none';
+                const testHeight = testDiv.scrollHeight;
+                testDiv.style.maxHeight = testMaxHeight;
+                document.body.removeChild(testDiv);
+                
+                const overflowThreshold = maxHeight * 0.98;
+                
+                if (testHeight > overflowThreshold && currentPageContent.trim() !== '') {
+                    // Create new page
+                    currentContentDiv.innerHTML = currentPageContent;
+                    
+                    const newPage = page.cloneNode(false);
+                    const newContentArea = contentArea.cloneNode(false);
+                    const newContentDiv = document.createElement('div');
+                    newContentDiv.className = 'article-columns-three-css';
+                    newContentDiv.style.width = '100%';
+                    newContentDiv.style.maxWidth = '100%';
+                    newContentArea.appendChild(newContentDiv);
+                    newPage.appendChild(newContentArea);
+                    
+                    const parentNode = currentPage.parentNode;
+                    if (parentNode) {
+                        parentNode.insertBefore(newPage, currentPage.nextSibling);
+                    }
+                    
+                    currentPage = newPage;
+                    currentContentDiv = newContentDiv;
+                    currentPageContent = elementHTML;
+                } else {
+                    currentPageContent += elementHTML;
+                }
+            }
+            
+            // Set final page content
+            if (currentPageContent && currentContentDiv) {
+                currentContentDiv.innerHTML = currentPageContent;
+            }
+        }
     }
 }
 
@@ -846,10 +1337,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     form.addEventListener('submit', (e) => {
         e.preventDefault();
-        const url = document.getElementById('article-url').value.trim();
+        const urlsString = document.getElementById('article-url').value.trim();
         
-        if (url) {
-            processArticleURL(url);
+        if (urlsString) {
+            processArticleURLs(urlsString);
         }
     });
 });

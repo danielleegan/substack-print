@@ -604,6 +604,61 @@ function cleanHTMLContent(html) {
             el.remove();
         });
     });
+
+    // Remove Substack video embeds (they often leave a blank fixed-height wrapper in print)
+    const videoPlayers = Array.from(doc2.querySelectorAll('[data-component-name="VideoEmbedPlayer"]'));
+    if (videoPlayers.length > 0) {
+        const isEffectivelyEmpty = (el) => {
+            if (!el) return false;
+            const text = (el.textContent || '').replace(/\s+/g, '').trim();
+            if (text.length > 0) return false;
+            const meaningfulChild = el.querySelector('img, picture, svg, video, audio, source, iframe, embed, object, table, ul, ol, blockquote, pre, h1, h2, h3, h4, h5, h6');
+            return !meaningfulChild;
+        };
+
+        const removeEmptyParents = (startEl) => {
+            let current = startEl;
+            while (current && current !== doc2.body) {
+                const tag = (current.tagName || '').toUpperCase();
+                if (!['DIV', 'P', 'FIGURE', 'SECTION', 'ARTICLE'].includes(tag)) break;
+                if (!isEffectivelyEmpty(current)) break;
+                const parent = current.parentElement;
+                current.remove();
+                current = parent;
+            }
+        };
+
+        videoPlayers.forEach(player => {
+            if (!player || !player.parentElement) return;
+
+            const wrapperCandidates = [
+                player.closest('figure'),
+                player.closest('[data-component-name="VideoEmbed"]'),
+                player.closest('[data-component-name="VideoEmbedWithCaption"]'),
+                player.closest('[data-component-name="Embed"]'),
+            ].filter(Boolean);
+
+            let removed = false;
+            for (const wrapper of wrapperCandidates) {
+                if (!wrapper || wrapper === doc2.body) continue;
+                const clone = wrapper.cloneNode(true);
+                clone.querySelectorAll('[data-component-name="VideoEmbedPlayer"]').forEach(el => el.remove());
+                if (isEffectivelyEmpty(clone)) {
+                    const parent = wrapper.parentElement;
+                    wrapper.remove();
+                    removeEmptyParents(parent);
+                    removed = true;
+                    break;
+                }
+            }
+
+            if (!removed) {
+                const parent = player.parentElement;
+                player.remove();
+                removeEmptyParents(parent);
+            }
+        });
+    }
     
     // Handle links: keep images, remove link wrappers, convert text links to plain text
     // BUT PRESERVE FOOTNOTE SPANS - they were created in preprocessing and must be kept
@@ -681,6 +736,58 @@ function cleanHTMLContent(html) {
             const textNode = doc.createTextNode(text);
             link.parentNode.replaceChild(textNode, link);
         }
+    });
+
+    // Normalize lazy-loaded images (common in full article HTML, especially multi-substack mode)
+    // Many Substack pages use placeholder src + data-src/data-srcset. Print/Safari can drop these if not normalized.
+    const isProbablyPlaceholderSrc = (src) => {
+        if (!src) return true;
+        const s = src.trim().toLowerCase();
+        return (
+            s === 'about:blank' ||
+            s.startsWith('data:') ||
+            s.includes('transparent') ||
+            s.includes('1x1') ||
+            s.includes('blank')
+        );
+    };
+
+    // <picture><source data-srcset> ... </picture>
+    doc2.querySelectorAll('source').forEach(source => {
+        const dataSrcset = source.getAttribute('data-srcset') || source.getAttribute('data-src');
+        if (dataSrcset && !source.getAttribute('srcset')) {
+            source.setAttribute('srcset', dataSrcset);
+        }
+    });
+
+    doc2.querySelectorAll('img').forEach(img => {
+        const src = img.getAttribute('src') || '';
+        const dataSrc =
+            img.getAttribute('data-src') ||
+            img.getAttribute('data-original') ||
+            img.getAttribute('data-lazy-src') ||
+            img.getAttribute('data-image') ||
+            '';
+        const dataSrcset =
+            img.getAttribute('data-srcset') ||
+            img.getAttribute('data-lazy-srcset') ||
+            '';
+
+        if (dataSrc && isProbablyPlaceholderSrc(src)) {
+            img.setAttribute('src', dataSrc);
+        }
+        if (dataSrcset && !img.getAttribute('srcset')) {
+            img.setAttribute('srcset', dataSrcset);
+        }
+        // If src is still missing but srcset exists, set src to first candidate for broader compatibility
+        if ((!img.getAttribute('src') || img.getAttribute('src') === '') && img.getAttribute('srcset')) {
+            const first = img.getAttribute('srcset').split(',')[0]?.trim()?.split(' ')[0];
+            if (first) img.setAttribute('src', first);
+        }
+
+        // Encourage eager loading/decoding so images are available by print time.
+        img.setAttribute('loading', 'eager');
+        img.setAttribute('decoding', 'sync');
     });
     
     // CRITICAL: Make sure footnote-reference spans are preserved and not removed
@@ -798,6 +905,76 @@ function cleanHTMLContent(html) {
     return doc2.body.innerHTML;
 }
 
+// Ensure images are ready before opening print dialog (helps Safari/Chrome not drop images)
+async function waitForNewsletterImages(timeoutMs = 8000) {
+    const newsletter = document.getElementById('newsletter');
+    if (!newsletter) return;
+
+    // Normalize any remaining lazy image attributes in the live DOM (defensive)
+    newsletter.querySelectorAll('source').forEach(source => {
+        const dataSrcset = source.getAttribute('data-srcset') || source.getAttribute('data-src');
+        if (dataSrcset && !source.getAttribute('srcset')) {
+            source.setAttribute('srcset', dataSrcset);
+        }
+    });
+    newsletter.querySelectorAll('img').forEach(img => {
+        const src = img.getAttribute('src') || '';
+        const dataSrc =
+            img.getAttribute('data-src') ||
+            img.getAttribute('data-original') ||
+            img.getAttribute('data-lazy-src') ||
+            img.getAttribute('data-image') ||
+            '';
+        const isPlaceholder =
+            !src ||
+            src === 'about:blank' ||
+            src.startsWith('data:');
+        if (dataSrc && isPlaceholder) {
+            img.setAttribute('src', dataSrc);
+        }
+        img.setAttribute('loading', 'eager');
+        img.setAttribute('decoding', 'sync');
+    });
+
+    const imgs = Array.from(newsletter.querySelectorAll('img')).filter(img => !!img.getAttribute('src'));
+
+    const loadPromises = imgs.map(img => {
+        // If already loaded successfully, skip waiting
+        if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+        return new Promise(resolve => {
+            let done = false;
+            const finish = () => {
+                if (done) return;
+                done = true;
+                resolve();
+            };
+            const timer = setTimeout(() => finish(), timeoutMs);
+            img.addEventListener('load', () => { clearTimeout(timer); finish(); }, { once: true });
+            img.addEventListener('error', () => { clearTimeout(timer); finish(); }, { once: true });
+        });
+    });
+
+    await Promise.all(loadPromises);
+
+    // Ask browser to decode images (best-effort)
+    await Promise.all(
+        imgs.map(img => (typeof img.decode === 'function' ? img.decode().catch(() => {}) : Promise.resolve()))
+    );
+}
+
+// Called by the Print button (see index.html)
+async function printNewsletter() {
+    try {
+        if (typeof posthog !== 'undefined') {
+            posthog.capture('print_clicked');
+        }
+        await waitForNewsletterImages(8000);
+    } catch (e) {
+        console.warn('printNewsletter: image wait failed (continuing to print)', e);
+    }
+    window.print();
+}
+
 // Format date for display
 function formatDate(date) {
     if (!date || isNaN(date.getTime())) {
@@ -901,6 +1078,29 @@ function findMainImage(doc) {
 function generateNewsletter(publication, articles) {
     const mode = getCurrentMode();
     const modeClass = mode && mode !== 'normal' ? ` mode-${mode}` : '';
+    const showAuthors = !!publication?.isMultiSubstack;
+    const escapeHTML = (str) =>
+        String(str ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    const renderAuthorLine = (article) => {
+        if (!showAuthors) return '';
+        const author = (article?.author || '').trim();
+        const substackName =
+            (article?.substackName || article?.publication || article?.publicationName || '').trim();
+
+        if (!author && !substackName) return '';
+        if (author && substackName) {
+            return `<div class="article-author">by ${escapeHTML(author)} from ${escapeHTML(substackName)}</div>`;
+        }
+        if (author) {
+            return `<div class="article-author">by ${escapeHTML(author)}</div>`;
+        }
+        return `<div class="article-author">from ${escapeHTML(substackName)}</div>`;
+    };
     // Get current date in PST/PDT timezone (America/Los_Angeles)
     const now = new Date();
     const pstFormatter = new Intl.DateTimeFormat('en-US', {
@@ -1045,6 +1245,7 @@ function generateNewsletter(publication, articles) {
                         <div class="article-section" data-full-content="${allParagraphs2.replace(/"/g, '&quot;')}">
                             <h2 class="article-title">${article2.title}</h2>
                             <div class="article-title-bar-front"></div>
+                            ${renderAuthorLine(article2)}
                             <div class="article-snippet">${snippet2}</div>
                             <div class="article-continued">See Page ${article2Page}</div>
                         </div>
@@ -1100,6 +1301,7 @@ function generateNewsletter(publication, articles) {
                         <div class="article-section" data-full-content="${allParagraphs3.replace(/"/g, '&quot;')}">
                             <h2 class="article-title">${article3.title}</h2>
                             <div class="article-title-bar-front"></div>
+                            ${renderAuthorLine(article3)}
                             ${imageHTML3}
                             <div class="article-snippet">${snippet3}</div>
                             <div class="article-continued">See Page ${article3Page}</div>
@@ -1113,6 +1315,7 @@ function generateNewsletter(publication, articles) {
                         ${imageHTML}
                         <h2 class="article-title">${article1.title}</h2>
                         <div class="article-title-bar-front"></div>
+                        ${renderAuthorLine(article1)}
                         <div class="article-content-right">${article1ContentPage1}</div>
                         ${article1ContentPage1.trim().length > 0 ? '<div class="article-continued">Continued on Page 2</div>' : ''}
                     </div>
@@ -1145,6 +1348,7 @@ function generateNewsletter(publication, articles) {
             // Add article title and content - CSS columns will flow naturally
             allContent += `<h2 class="article-title">${article.title}</h2>`;
             allContent += '<div class="article-title-bar"></div>'; // Horizontal bar after title for print
+            allContent += renderAuthorLine(article);
             allContent += cleanContent;
         }
         
@@ -1479,6 +1683,378 @@ async function processSubstackURL(url) {
     }
 }
 
+// --- Multi-Substack (article URLs) support ---
+// This reuses the same "article-test" approach:
+// fetch article HTML (proxy/allorigins) -> extract body_html -> preprocess/clean -> render newspaper
+
+async function fetchArticleViaProxy(url) {
+    const proxyUrl = `${CLOUDFLARE_PROXY_URL}?url=${encodeURIComponent(url)}`;
+    const response = await fetchWithTimeout(proxyUrl, {}, 10000);
+    if (!response.ok) throw new Error(`Proxy fetch failed: ${response.status} ${response.statusText}`);
+    const text = await response.text();
+    if (!text || text.length === 0) throw new Error('Proxy returned empty response');
+    return text;
+}
+
+async function fetchArticleViaAllOrigins(url) {
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+    const response = await fetchWithTimeout(proxyUrl, {}, 10000);
+    if (!response.ok) throw new Error(`AllOrigins fetch failed: ${response.status} ${response.statusText}`);
+    const data = await response.json();
+    const content = data.contents || data.content || '';
+    if (!content || content.length === 0) throw new Error('AllOrigins returned empty content');
+    return content;
+}
+
+function extractJSONDataFromArticleHTML(html) {
+    try {
+        const scriptMatch = html.match(/<script[^>]*>([\s\S]*?window\._preloads[\s\S]*?)<\/script>/);
+        if (!scriptMatch) return null;
+        const scriptContent = scriptMatch[1];
+
+        const templateLiteralMatch = scriptContent.match(/window\._preloads\s*=\s*JSON\.parse\(`([\s\S]*?)`\)/);
+        if (templateLiteralMatch && templateLiteralMatch[1]) {
+            try { return JSON.parse(templateLiteralMatch[1]); } catch (_) {}
+        }
+
+        const jsonParseMatch = scriptContent.match(/window\._preloads\s*=\s*JSON\.parse\(/);
+        if (jsonParseMatch) {
+            const startPos = jsonParseMatch.index + jsonParseMatch[0].length;
+            const remaining = scriptContent.substring(startPos);
+            let quoteChar = null;
+            let quotePos = -1;
+
+            const backtickPos = remaining.indexOf('`');
+            if (backtickPos !== -1 && (quotePos === -1 || backtickPos < quotePos)) { quoteChar = '`'; quotePos = backtickPos; }
+            const doubleQuotePos = remaining.indexOf('"');
+            if (doubleQuotePos !== -1 && (quotePos === -1 || doubleQuotePos < quotePos)) { quoteChar = '"'; quotePos = doubleQuotePos; }
+            const singleQuotePos = remaining.indexOf("'");
+            if (singleQuotePos !== -1 && (quotePos === -1 || singleQuotePos < quotePos)) { quoteChar = "'"; quotePos = singleQuotePos; }
+
+            if (quoteChar && quotePos !== -1) {
+                let jsonString = '';
+                let i = quotePos + 1;
+                let escaped = false;
+                while (i < remaining.length) {
+                    const char = remaining[i];
+                    if (escaped) { jsonString += char; escaped = false; }
+                    else if (char === '\\') { jsonString += char; escaped = true; }
+                    else if (char === quoteChar) { break; }
+                    else { jsonString += char; }
+                    i++;
+                }
+                if (jsonString.length > 0) {
+                    try {
+                        if (quoteChar !== '`') {
+                            jsonString = jsonString
+                                .replace(/\\"/g, '"')
+                                .replace(/\\'/g, "'")
+                                .replace(/\\n/g, '\n')
+                                .replace(/\\t/g, '\t')
+                                .replace(/\\r/g, '\r')
+                                .replace(/\\\\/g, '\\');
+                        }
+                        return JSON.parse(jsonString);
+                    } catch (_) {}
+                }
+            }
+        }
+
+        const jsonParseIndex = scriptContent.indexOf('JSON.parse(');
+        if (jsonParseIndex !== -1) {
+            let pos = jsonParseIndex + 'JSON.parse('.length;
+            while (pos < scriptContent.length && /\s/.test(scriptContent[pos])) pos++;
+            if (scriptContent[pos] === '"' || scriptContent[pos] === "'" || scriptContent[pos] === '`') {
+                const quoteChar = scriptContent[pos];
+                const jsonStart = pos + 1;
+                pos++;
+                let escaped = false;
+                let jsonEnd = -1;
+                while (pos < scriptContent.length) {
+                    const char = scriptContent[pos];
+                    if (escaped) escaped = false;
+                    else if (char === '\\') escaped = true;
+                    else if (char === quoteChar) { jsonEnd = pos; break; }
+                    pos++;
+                }
+                if (jsonEnd !== -1) {
+                    let jsonStr = scriptContent.substring(jsonStart, jsonEnd);
+                    if (quoteChar !== '`') {
+                        jsonStr = jsonStr
+                            .replace(/\\"/g, '"')
+                            .replace(/\\'/g, "'")
+                            .replace(/\\n/g, '\n')
+                            .replace(/\\t/g, '\t')
+                            .replace(/\\r/g, '\r')
+                            .replace(/\\\\/g, '\\');
+                    }
+                    try { return JSON.parse(jsonStr); } catch (_) {}
+                }
+            }
+        }
+        return null;
+    } catch (_) {
+        return null;
+    }
+}
+
+function extractArticleDataFromHTML(html) {
+    try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const metaAuthor = doc.querySelector('meta[name="author"]')?.getAttribute('content')?.trim() || '';
+        // Substack name from RSS <link rel="alternate" type="application/rss+xml" ... title="...">
+        const rssLink =
+            doc.querySelector('link[rel="alternate"][type="application/rss+xml"][href$="/feed"]') ||
+            doc.querySelector('link[rel="alternate"][type="application/rss+xml"][href*="/feed"]');
+        const substackName = rssLink?.getAttribute('title')?.trim() || '';
+
+        const bodyMarkup = doc.querySelector('.body.markup, .body-markup, [class*="body"][class*="markup"]');
+        if (bodyMarkup) {
+            const title =
+                doc.querySelector('title')?.textContent ||
+                doc.querySelector('h1')?.textContent ||
+                doc.querySelector('[class*="title"]')?.textContent ||
+                'No title found';
+            return {
+                title,
+                body_html: bodyMarkup.innerHTML,
+                body_text: bodyMarkup.textContent || bodyMarkup.innerText,
+                author: metaAuthor,
+                substackName,
+                extracted_from: 'HTML DOM'
+            };
+        }
+
+        const altSelectors = [
+            '.post-content',
+            '.article-content',
+            '.entry-content',
+            '[class*="post"][class*="content"]',
+            '[class*="article"][class*="body"]',
+            'article',
+            'main'
+        ];
+        for (const selector of altSelectors) {
+            const element = doc.querySelector(selector);
+            if (element) {
+                const title = doc.querySelector('title')?.textContent || 'No title found';
+                return {
+                    title,
+                    body_html: element.innerHTML,
+                    body_text: element.textContent || element.innerText,
+                    author: metaAuthor,
+                    substackName,
+                    extracted_from: `HTML DOM (${selector})`
+                };
+            }
+        }
+
+        return null;
+    } catch (_) {
+        return null;
+    }
+}
+
+function extractArticleDataFromJSON(jsonData) {
+    if (!jsonData || !jsonData.post) return null;
+    const post = jsonData.post;
+    return {
+        title: post.title || 'No title',
+        body_html: post.body_html || '',
+        body_text: post.body_text || '',
+        published_at: post.published_at || '',
+        author: post.publishedBylines?.[0]?.name || 'Unknown',
+        publication: jsonData.pub?.name || jsonData.pub?.title || 'Unknown',
+        substackName: jsonData.pub?.name || jsonData.pub?.title || '',
+        extracted_from: 'JSON data'
+    };
+}
+
+async function fetchSingleArticleURL(url, articleIndex) {
+    const normalized = url.startsWith('http') ? url : `https://${url}`;
+
+    let html = null;
+    try {
+        html = await fetchArticleViaProxy(normalized);
+    } catch (proxyError) {
+        html = await fetchArticleViaAllOrigins(normalized);
+    }
+
+    if (!html || html.length === 0) throw new Error('Failed to fetch article HTML (empty response)');
+
+    let articleData = extractArticleDataFromHTML(html);
+    if (!articleData) {
+        const jsonData = extractJSONDataFromArticleHTML(html);
+        if (jsonData) articleData = extractArticleDataFromJSON(jsonData);
+    }
+    if (!articleData) throw new Error('Could not find article data in page');
+
+    let processedContent = articleData.body_html || '';
+    processedContent = preprocessRSSContent(processedContent, articleIndex);
+    processedContent = cleanHTMLContent(processedContent);
+
+    return {
+        title: articleData.title || 'No title',
+        author: articleData.author || '',
+        substackName: articleData.substackName || articleData.publication || '',
+        link: normalized,
+        content: processedContent,
+        pubDate: articleData.published_at || '',
+        articleData,
+        articleIndex
+    };
+}
+
+// Multi-Substack mode now uses pasted ARTICLE URLs (article-test logic)
+async function processMultiPublicationURLs(urlsString, newspaperTitle = 'Multi-Substack') {
+    const loadingEl = document.getElementById('loading');
+    const errorEl = document.getElementById('error');
+    const newsletterContainer = document.getElementById('newsletter-container');
+    const newsletterEl = document.getElementById('newsletter');
+    
+    loadingEl.classList.remove('hidden');
+    errorEl.classList.add('hidden');
+    newsletterContainer.classList.add('hidden');
+    updateMobileElements();
+    
+    try {
+        const urlStrings = urlsString
+            .split(/[\n,]+/)
+            .map(s => s.trim())
+            .filter(Boolean);
+
+        // Keep path (we expect full /p/... article URLs). Remove protocol + trailing slash only.
+        const normalizedUrls = Array.from(new Set(urlStrings.map(u => normalizeURL(u)).filter(Boolean)));
+        if (normalizedUrls.length === 0) throw new Error('No valid URLs provided');
+
+        loadingEl.textContent = 'Getting your articles for ya… this may take a couple minutes!';
+
+        const articles = await Promise.all(
+            normalizedUrls.map((u, i) => fetchSingleArticleURL(u, i))
+        );
+
+        const title = (newspaperTitle || '').trim() || 'Multi-Substack';
+        const publication = {
+            title,
+            description: '',
+            establishedDate: null,
+            isMultiSubstack: true
+        };
+
+        const newsletterHTML = generateNewsletter(publication, articles);
+        newsletterEl.innerHTML = newsletterHTML;
+        
+        // Apply mode + post-processing (same as single-publication)
+        newsletterContainer.classList.remove('hidden');
+        loadingEl.classList.add('hidden');
+        updateMobileElements();
+        
+        applyModeToPages();
+        updatePageVisibility();
+        updateExampleImages();
+        
+        setTimeout(() => {
+            try { trimArticle1ToFit(); } catch (e) { console.error('Error in trimArticle1ToFit:', e); }
+            try { optimizeLeftColumnContent(); } catch (e) { console.error('Error in optimizeLeftColumnContent:', e); }
+            
+            setTimeout(() => {
+                try {
+                    splitPagesDynamically();
+                    applyModeToPages();
+                    updatePageVisibility();
+                    updateArticlePageReferences(articles);
+                    adjustAllTitleSizes();
+                    preventOrphanedImageCaptions();
+                    markFootnotesSections();
+                    setTimeout(() => {
+                        appendMultiSubstackDisclaimer(normalizedUrls);
+                        addPageNumbers();
+                    }, 100);
+                } catch (e) {
+                    console.error('Error in post-processing:', e);
+                }
+            }, 200);
+        }, 500);
+        
+        if (typeof posthog !== 'undefined') {
+            posthog.capture('newsletter_generated', {
+                publication: 'MULTI-SUBSTACK',
+                article_count: articles.length,
+                mode: getCurrentMode(),
+                used_cache: false
+            });
+        }
+    } catch (error) {
+        console.error('Error processing multi-substack URLs:', error);
+        loadingEl.classList.add('hidden');
+        errorEl.textContent = 'Problem loading :( make sure each line is a full Substack ARTICLE URL like "publication.substack.com/p/post-slug" and if that doesn\'t work email me at bugs@substackprint.com';
+        errorEl.classList.remove('hidden');
+        
+        if (typeof posthog !== 'undefined') {
+            posthog.capture('newsletter_error', {
+                error_message: error.message,
+                url: 'multi-substack'
+            });
+        }
+    }
+}
+
+function appendMultiSubstackDisclaimer(urls) {
+    // Remove any previous disclaimer blocks (avoid duplicates on re-generate)
+    document.querySelectorAll('.multi-substack-disclaimer').forEach(el => el.remove());
+
+    const allBodyContainers = Array.from(document.querySelectorAll('.newsletter-page .article-columns-three-css'));
+    let target = allBodyContainers[allBodyContainers.length - 1] || null;
+
+    // If there is no body page (e.g., single-article case), append to the end of the featured article column.
+    if (!target) {
+        const firstPage = document.querySelector('.newsletter-page');
+        target = firstPage?.querySelector('.article-col-right .article-content-right') || null;
+    }
+    if (!target) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'multi-substack-disclaimer';
+
+    const hr = document.createElement('hr');
+    wrapper.appendChild(hr);
+
+    const heading = document.createElement('p');
+    const strong = document.createElement('strong');
+    strong.textContent = 'Articles included in your edition of the Substack Print:';
+    heading.appendChild(strong);
+    wrapper.appendChild(heading);
+
+    const urlsContainer = document.createElement('div');
+    urlsContainer.className = 'multi-substack-urls';
+    (urls || []).forEach(u => {
+        const line = document.createElement('div');
+        line.className = 'multi-substack-url';
+        line.textContent = u;
+        urlsContainer.appendChild(line);
+    });
+    wrapper.appendChild(urlsContainer);
+
+    const p2 = document.createElement('p');
+    p2.textContent =
+        'Don’t forget to like, comment, subscribe, and otherwise support these writers online. The Substack Print is designed to be a supplement to help you read without the distraction of the internet, but it’s important to still share your appreciation and compensate writers when financially able!';
+    wrapper.appendChild(p2);
+
+    const p3 = document.createElement('p');
+    const em = document.createElement('em');
+    em.textContent =
+        "The Substack Print isn't affiliated with Substack HQ, it was made by artist and mischief-maker raw & feral (rawandferal.substack.com).";
+    p3.appendChild(em);
+    wrapper.appendChild(p3);
+
+    const p4 = document.createElement('p');
+    p4.textContent = 'substackprint.com';
+    wrapper.appendChild(p4);
+
+    target.appendChild(wrapper);
+}
+
 // Reset form function
 function resetForm() {
     document.getElementById('substack-form').reset();
@@ -1755,20 +2331,31 @@ if (document.readyState === 'loading') {
 // Form submission handler
 document.getElementById('substack-form').addEventListener('submit', (e) => {
     e.preventDefault();
-    let url = document.getElementById('substack-url').value.trim();
+    const publicationMode =
+        document.querySelector('input[name="publication-mode"]:checked')?.value || 'single';
     
-    url = normalizeURL(url);
-    
-    if (url) {
-        // Track form submission
+    if (publicationMode === 'multi') {
+        const urlsString = (document.getElementById('substack-urls')?.value || '').trim();
+        const newspaperTitle = (document.getElementById('multi-newspaper-title')?.value || '').trim();
+        if (!urlsString) return;
+        
         if (typeof posthog !== 'undefined') {
-            posthog.capture('newsletter_requested', {
-                url: url
-            });
+            posthog.capture('newsletter_requested', { url: 'multi-substack' });
         }
         
-        processSubstackURL(url);
+        processMultiPublicationURLs(urlsString, newspaperTitle);
+        return;
     }
+    
+    let url = document.getElementById('substack-url').value.trim();
+    url = normalizeURL(url);
+    if (!url) return;
+    
+    if (typeof posthog !== 'undefined') {
+        posthog.capture('newsletter_requested', { url: url });
+    }
+    
+    processSubstackURL(url);
 });
 
 // Function to adjust title font size to fit in max 2 lines (only for page 1)
@@ -1885,6 +2472,7 @@ function trimArticle1ToFit() {
     const description = articleColRight.querySelector('.article-description');
     const continued = articleColRight.querySelector('.article-continued');
     const titleBar = articleColRight.querySelector('.article-title-bar-front');
+    const authorLine = articleColRight.querySelector('.article-author');
     
     // Calculate used height for fixed elements
     let usedHeight = 0;
@@ -1900,6 +2488,10 @@ function trimArticle1ToFit() {
         // Use fixed height for horizontal bar: 1px height + 1.5px margin-top + 12px margin-bottom = 14.5px total
         // This avoids timing issues with measurement that cause content to jump
         usedHeight += 14.5; // Fixed height for article-title-bar-front
+    }
+    if (authorLine) {
+        const authorStyle = getComputedStyle(authorLine);
+        usedHeight += authorLine.offsetHeight + parseFloat(authorStyle.marginTop) + parseFloat(authorStyle.marginBottom);
     }
     if (subtitle) {
         const subtitleStyle = getComputedStyle(subtitle);
@@ -3819,6 +4411,14 @@ function markFootnotesSections() {
             const footnoteSections = contentDiv.querySelectorAll('.footnotes-section, .footnotes-list, [class*="footnote"], [id*="footnote"]');
             console.log(`Page ${pageIndex}: Found ${footnoteSections.length} potential footnote sections`);
             footnoteSections.forEach(section => {
+                // Never treat inline footnote references as footnote sections
+                if (
+                    section.classList?.contains('footnote-reference') ||
+                    section.classList?.contains('footnote-anchor') ||
+                    section.getAttribute?.('data-footnote-ref')
+                ) {
+                    return;
+                }
                 // Skip if this is article content with footnote links, not a footnotes section
                 const isInArticleContent = section.closest('.article-content, .article-columns-three-css') !== null;
                 const hasExplicitFootnoteClasses = section.classList.contains('footnotes-section') ||
@@ -4010,12 +4610,27 @@ function markFootnotesSections() {
         // Filter to only include elements that are actually footnote containers
         // Exclude article titles, headings, and other non-footnote elements
         const actualFootnoteContainers = Array.from(footnoteElements).filter(el => {
+            // CRITICAL: Exclude inline footnote references (these are not footnote sections)
+            if (
+                el.classList?.contains('footnote-reference') ||
+                el.classList?.contains('footnote-anchor') ||
+                el.getAttribute?.('data-footnote-ref')
+            ) {
+                return false;
+            }
+
             // Must have footnote-related class or ID
             const hasFootnoteClass = el.classList.toString().toLowerCase().includes('footnote');
             const hasFootnoteId = el.id.toLowerCase().includes('footnote');
             
             // Must NOT be an article title or heading
             const isTitle = el.classList.contains('article-title') || el.tagName.match(/^H[1-6]$/);
+
+            // Must be a container-ish element (avoid stray inline elements being treated as sections)
+            const isInline = el.tagName === 'SPAN' || el.tagName === 'A' || el.tagName === 'SUP';
+            if (isInline) {
+                return false;
+            }
             
             // Must NOT be inside article content (unless it's explicitly a footnote section)
             const isInArticle = el.closest('.article-content, .article-columns-three-css') !== null;
@@ -5181,6 +5796,52 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (defaultURL) {
         processSubstackURL(defaultURL);
+    }
+
+    // Publication mode toggle (One Substack vs Multi-Substack)
+    const singleFields = document.getElementById('single-publication-fields');
+    const multiFields = document.getElementById('multi-publication-fields');
+    const singleInput = document.getElementById('substack-url');
+    const multiInput = document.getElementById('substack-urls');
+    
+    const getPublicationMode = () =>
+        document.querySelector('input[name="publication-mode"]:checked')?.value || 'single';
+
+    const applyPublicationMode = () => {
+        const mode = getPublicationMode();
+        const isMulti = mode === 'multi';
+        
+        if (singleFields) singleFields.classList.toggle('hidden', isMulti);
+        if (multiFields) multiFields.classList.toggle('hidden', !isMulti);
+        
+        if (singleInput) singleInput.required = !isMulti;
+        if (multiInput) multiInput.required = isMulti;
+        
+        // Clear any previous output/error when switching modes
+        const errorEl = document.getElementById('error');
+        const newsletterContainer = document.getElementById('newsletter-container');
+        const newsletterEl = document.getElementById('newsletter');
+        if (errorEl) errorEl.classList.add('hidden');
+        if (newsletterContainer) newsletterContainer.classList.add('hidden');
+        if (newsletterEl) newsletterEl.innerHTML = '';
+        updateMobileElements();
+
+        // Auto-generate on first switch to Multi-Substack (mirrors One Substack auto-load)
+        if (isMulti && multiInput) {
+            const hasAutoLoaded = multiFields?.dataset?.autoLoaded === 'true';
+            const urlsString = (multiInput.value || '').trim();
+            if (!hasAutoLoaded && urlsString) {
+                if (multiFields) multiFields.dataset.autoLoaded = 'true';
+                const newspaperTitle = (document.getElementById('multi-newspaper-title')?.value || '').trim();
+                processMultiPublicationURLs(urlsString, newspaperTitle);
+            }
+        }
+    };
+    
+    const publicationModeRadios = document.querySelectorAll('input[name="publication-mode"]');
+    if (publicationModeRadios.length > 0) {
+        publicationModeRadios.forEach(r => r.addEventListener('change', applyPublicationMode));
+        applyPublicationMode();
     }
     
     // Add event listener for mode dropdown

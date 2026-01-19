@@ -30,14 +30,43 @@
         
         <div class="input-section">
             <form id="substack-form">
-                <label for="substack-url">Enter Substack URL:</label>
-                <input 
-                    type="text" 
-                    id="substack-url" 
-                    value="rawandferal.substack.com"
-                    placeholder="rawandferal.substack.com or https://example.substack.com"
-                    required
-                >
+                <div class="publication-toggle" role="radiogroup" aria-label="Publication mode">
+                    <input type="radio" id="pub-mode-single" name="publication-mode" value="single" checked>
+                    <label for="pub-mode-single">One Substack</label>
+
+                    <input type="radio" id="pub-mode-multi" name="publication-mode" value="multi">
+                    <label for="pub-mode-multi">Multi-Substack</label>
+                </div>
+
+                <div id="single-publication-fields">
+                    <label for="substack-url">Enter Substack URL:</label>
+                    <input 
+                        type="text" 
+                        id="substack-url" 
+                        value="rawandferal.substack.com"
+                        placeholder="rawandferal.substack.com or https://example.substack.com"
+                        required
+                    >
+                </div>
+
+                <div id="multi-publication-fields" class="hidden">
+                    <label for="substack-urls">Enter Substack Article URLs:</label>
+                    <textarea
+                        id="substack-urls"
+                        class="url-input"
+                        placeholder="https://rawandferal.substack.com/p/post-slug&#10;https://example.substack.com/p/another-post&#10;https://another.substack.com/p/some-post"
+                    >https://rawandferal.substack.com/p/the-game-theory-of-1-margarita-night
+https://rawandferal.substack.com/p/fck-run-club-join-sit-club
+https://rawandferal.substack.com/p/death-duel</textarea>
+
+                    <label for="multi-newspaper-title">Newspaper Name:</label>
+                    <input
+                        type="text"
+                        id="multi-newspaper-title"
+                        value="The Substack Print"
+                        placeholder="My Substack Sampler"
+                    >
+                </div>
                 <div class="form-controls">
                     <button type="submit">Go analog!</button>
                     <div class="mode-select-wrapper">
@@ -61,7 +90,7 @@
         
         <div id="newsletter-container" class="hidden">
             <div class="newsletter-controls">
-                <button onclick="if(typeof posthog!=='undefined'){posthog.capture('print_clicked');}window.print();">Print/Save as PDF</button>
+                <button onclick="printNewsletter();">Print/Save as PDF</button>
             </div>
             <div id="mobile-front-page-label" class="mobile-only hidden">
                 <strong>Your Front Page:</strong>

@@ -126,52 +126,23 @@
 <body>
     <div class="container">
         <h1>Article URL Test</h1>
-        <p>Test fetching content directly from a Substack article URL (instead of RSS feed)</p>
+        <p>Test fetching content directly from Substack article URLs (instead of RSS feed). Enter multiple URLs separated by commas.</p>
         
         <div class="input-section">
             <form id="article-form">
-                <label for="article-url">Enter Substack Article URL:</label>
-                <input 
-                    type="text" 
-                    id="article-url" 
-                    value="https://rawandferal.substack.com/p/substack-print"
-                    placeholder="https://publication.substack.com/p/article-slug"
+                <label for="article-url">Enter Substack Article URL(s) (comma-separated):</label>
+                <textarea
+                    id="article-url"
+                    class="url-input"
+                    placeholder="Paste one URL per line (or comma-separated).&#10;https://publication.substack.com/p/article-slug&#10;https://publication.substack.com/p/article-slug-2"
                     required
-                >
-                <button type="submit">Fetch Article</button>
+                >https://rawandferal.substack.com/p/substack-print</textarea>
+                <button type="submit">Fetch Articles</button>
             </form>
         </div>
         
         <div id="loading" class="hidden">Loading...</div>
         <div id="error"></div>
-        
-        <div id="result" class="hidden">
-            <div class="result-section">
-                <h3>Article Title (RSS Format)</h3>
-                <div id="article-title" class="result-content"></div>
-            </div>
-            
-            <div class="result-section">
-                <h3>Processed Content HTML (RSS Format - Raw)</h3>
-                <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">
-                    This is the content after processing through preprocessRSSContent() and cleanHTMLContent() - matching RSS feed format
-                </p>
-                <div id="article-body-raw" class="result-content"></div>
-            </div>
-            
-            <div class="result-section">
-                <h3>Processed Content HTML (RSS Format - Preview)</h3>
-                <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">
-                    Rendered preview of the processed content (same as what RSS feed would provide)
-                </p>
-                <div id="article-body-preview" class="article-preview"></div>
-            </div>
-            
-            <div class="result-section">
-                <h3>RSS Format Structure & Metadata</h3>
-                <div id="json-data" class="result-content"></div>
-            </div>
-        </div>
         
         <div class="newsletter-container-test hidden" id="newsletter-container-test">
             <h3>Newspaper Format Preview</h3>

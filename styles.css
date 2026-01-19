@@ -124,6 +124,103 @@ form {
     width: 100%;
 }
 
+/* One vs Multi publication segmented toggle (pill) */
+.publication-toggle {
+    display: flex;
+    align-items: center;
+    width: 40%;
+    min-width: 420px;
+    max-width: 720px;
+    margin: 0 auto;
+    border: 1px solid #FF8C00;
+    border-radius: 999px;
+    padding: 2px;
+    background: transparent;
+    gap: 4px;
+}
+
+.publication-toggle input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.publication-toggle label {
+    flex: 1;
+    text-align: center;
+    padding: 8px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    user-select: none;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-weight: normal;
+    font-size: 1em;
+    line-height: 1.1;
+    color: #000;
+    background: transparent;
+    transition: background-color 160ms ease, color 160ms ease;
+}
+
+.publication-toggle input[type="radio"]:checked + label {
+    background: #FF8C00;
+    color: #000;
+}
+
+.publication-toggle label:focus-visible {
+    outline: 2px solid #000;
+    outline-offset: 2px;
+}
+
+@media screen and (max-width: 768px) {
+    .publication-toggle {
+        width: 100%;
+        min-width: 0;
+        max-width: 520px;
+    }
+}
+
+/* Author line under titles (Multi-Substack uses this) */
+.article-author {
+    font-style: italic;
+    font-size: 0.8em;
+    color: #333;
+    text-align: center;
+    margin: 4px 0 10px 0;
+    text-indent: 0 !important;
+}
+
+/* Multi-Substack footer disclaimer */
+.multi-substack-disclaimer {
+    font-size: inherit; /* match newspaper body text */
+    line-height: 1.5;
+    margin-top: 0.25in;
+}
+
+.multi-substack-urls {
+    margin: 8px 0 16px 0;
+}
+
+.multi-substack-url {
+    word-break: break-word;
+    margin-bottom: 10px; /* space after each article url */
+}
+
+/* Ensure disclaimer spacing isn't overridden by newspaper paragraph rules */
+.article-columns-three-css .multi-substack-disclaimer p,
+.article-content-right .multi-substack-disclaimer p,
+.article-content .multi-substack-disclaimer p {
+    margin: 0 0 16px 0 !important; /* space after every paragraph */
+    text-indent: 0 !important;
+}
+
+/* Make disclaimer divider line match article dividers (full-width) */
+.multi-substack-disclaimer hr {
+    width: 100% !important;
+    border-top: 1px solid #000 !important;
+    margin-top: 0.25in !important;
+    margin-bottom: 0.25in !important;
+}
+
 .mode-select-wrapper {
     position: relative;
     display: inline-block;
@@ -187,7 +284,8 @@ label {
 }
 
 input[type="text"],
-input[type="url"] {
+input[type="url"],
+textarea {
     padding: 12px;
     font-size: 1em;
     border: 1px solid #FF8C00;
@@ -199,9 +297,20 @@ input[type="url"] {
 }
 
 input[type="text"]:focus,
-input[type="url"]:focus {
+input[type="url"]:focus,
+textarea:focus {
     outline: none;
     border-color: #FF8C00;
+}
+
+/* Article URL multi-line input (used in article-test) */
+textarea.url-input,
+textarea#article-url {
+    min-height: 140px;
+    max-height: 320px;
+    overflow-y: auto;
+    resize: vertical;
+    white-space: pre-wrap;
 }
 
 .input-section p,
@@ -2658,15 +2767,16 @@ header ~ p a {
     }
     
     /* CRITICAL: Make Article 1 (.article-content-right) match Articles 2 & 3 (.article-snippet) exactly on mobile */
-    /* Force both to use the exact same font-size - use 0.85em relative to a fixed base */
+    /* Since both compute to 13.6px but Article 1 looks larger, ensure ALL typography properties match */
     .front-page .article-col-right,
-    .front-page .article-col-left {
+    .front-page .article-col-left,
+    .front-page .article-col-left .article-section {
         font-size: 16px !important; /* Explicit base font-size so 0.85em = 13.6px for both */
     }
     
-    /* Force article-content-right to match article-snippet exactly */
+    /* Force both to match exactly - copy ALL properties from article-snippet to article-content-right */
     .front-page .article-col-right .article-content-right {
-        font-size: 0.85em !important; /* Use em relative to parent's 16px = 13.6px */
+        font-size: 13.6px !important; /* Explicit pixel value to match computed size */
         line-height: 1.5 !important;
         font-weight: normal !important;
         letter-spacing: normal !important;
@@ -2676,18 +2786,9 @@ header ~ p a {
         overflow-wrap: break-word !important;
     }
     
-    /* Apply same font-size to all text content (p, span, etc.) but not headings */
-    .front-page .article-col-right .article-content-right p,
-    .front-page .article-col-right .article-content-right span:not(h1 span):not(h2 span):not(h3 span):not(h4 span):not(h5 span):not(h6 span),
-    .front-page .article-col-right .article-content-right li,
-    .front-page .article-col-right .article-content-right div:not(.article-title):not(.article-subtitle) {
-        font-size: inherit !important; /* Inherit 0.85em from parent */
-    }
-    
-    /* Ensure article-snippet also uses the same relative sizing */
     .front-page .article-col-left .article-snippet,
     .front-page .article-col-left .article-section .article-snippet {
-        font-size: 0.85em !important; /* Use em relative to parent's 16px = 13.6px */
+        font-size: 13.6px !important; /* Explicit pixel value to match computed size */
         line-height: 1.5 !important;
         font-weight: normal !important;
         letter-spacing: normal !important;
