@@ -39,6 +39,29 @@ function preprocessRSSContent(htmlContent, articleIndex = null) {
             link.parentNode.replaceChild(span, link);
         }
     }
+
+    // Preserve hyperlinked text by unwrapping non-footnote links early.
+    // Example: <p><a href="...">sweatpants</a></p> => <p>sweatpants</p>
+    doc.querySelectorAll('a').forEach(a => {
+        const isFootnoteLink =
+            a.classList.contains('footnote-anchor') &&
+            a.getAttribute('data-component-name') === 'FootnoteAnchorToDOM';
+        if (isFootnoteLink) return;
+
+        const parent = a.parentNode;
+        if (!parent) return;
+
+        const img = a.querySelector('img');
+        if (img) {
+            parent.replaceChild(img.cloneNode(true), a);
+            return;
+        }
+
+        const text =
+            (a.textContent || a.innerText || a.getAttribute('aria-label') || '').trim() ||
+            (a.getAttribute('href') || '');
+        parent.replaceChild(doc.createTextNode(text), a);
+    });
     
     // Process footnote lists
     // IMPORTANT: Do NOT touch normal article lists (<ul>/<ol> in the body).
@@ -206,7 +229,7 @@ function cleanHTMLContent(html) {
             link.parentNode.replaceChild(imgClone, link);
         } else {
             const text = link.textContent;
-            const textNode = document.createTextNode(text);
+            const textNode = doc2.createTextNode(text);
             link.parentNode.replaceChild(textNode, link);
         }
     });
