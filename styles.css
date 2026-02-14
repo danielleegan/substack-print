@@ -1381,6 +1381,13 @@ header ~ p a {
 
 /* CSS paged media handles page breaks automatically */
 
+/* Space after poetry blocks (converted preformatted text) */
+.article-columns-three-css .poetry-block,
+.article-content .poetry-block,
+.article-content-right .poetry-block {
+    margin-bottom: 1em;
+}
+
 .article-columns-three-css p {
     margin-bottom: 0;
     text-align: justify;

@@ -256,6 +256,32 @@ function cleanHTMLContent(html) {
             }
         });
     }
+
+    // Poetry / preformatted blocks: treat as normal text and remove the hide-text label
+    const preformattedBlocks = Array.from(doc2.querySelectorAll('[data-component-name="PreformattedTextBlockToDOM"], .preformatted-block'));
+    preformattedBlocks.forEach(block => {
+        if (!block || !block.parentNode) return;
+        const next = block.nextElementSibling;
+        if (next && next.classList.contains('hide-text') && next.getAttribute('contenteditable') === 'false') {
+            next.remove();
+        }
+        block.querySelectorAll('.hide-text[contenteditable="false"]').forEach(el => el.remove());
+        block.removeAttribute('data-component-name');
+        block.classList.remove('preformatted-block');
+        block.querySelectorAll('pre').forEach(pre => {
+            const div = doc2.createElement('div');
+            div.innerHTML = pre.innerHTML.replace(/\r?\n/g, '<br>');
+            pre.parentNode.replaceChild(div, pre);
+        });
+        if (block.tagName === 'PRE') {
+            const div = doc2.createElement('div');
+            div.className = 'poetry-block';
+            div.innerHTML = block.innerHTML.replace(/\r?\n/g, '<br>');
+            block.parentNode.replaceChild(div, block);
+        } else {
+            block.classList.add('poetry-block');
+        }
+    });
     
     // Handle links
     doc2.querySelectorAll('a').forEach(link => {
