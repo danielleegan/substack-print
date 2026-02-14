@@ -221,6 +221,26 @@ form {
     margin-bottom: 0.25in !important;
 }
 
+/* FAQ / Help link under disclaimer */
+.disclaimer-faq-link {
+    margin-top: 16px !important;
+    margin-bottom: 0 !important;
+    font-style: normal;
+}
+.disclaimer-faq-icon {
+    width: 1.25em;
+    height: 1.25em;
+    vertical-align: middle;
+    margin-right: 0.09em;
+    display: inline-block;
+}
+.disclaimer-faq-link-a {
+    text-decoration: underline;
+    color: #535353;
+    font-size: 0.9em;
+    font-style: normal;
+}
+
 .mode-select-wrapper {
     position: relative;
     display: inline-block;
@@ -2569,12 +2589,13 @@ header ~ p a {
     }
     
     .header-title-container {
-        flex-direction: column;
-        gap: 0;
+        flex-direction: row;
+        gap: 12px;
     }
     
     .header-title-container .header-logo {
-        display: none; /* Hide logo in title container on mobile */
+        display: block; /* Show logo in title container on mobile (like desktop) */
+        max-height: 45px;
     }
     
     header h1 {
@@ -2589,20 +2610,16 @@ header ~ p a {
         padding-bottom: 0 !important;
     }
     
-    /* Show logo under header p on mobile */
+    /* Hide duplicate mobile logo - logo now in header-title-container */
     .header-logo-mobile {
-        display: block;
-        margin: 0 auto;
-        margin-top: 0 !important;
-        padding-top: 0 !important;
-        max-width: 90px; /* 25% smaller than 120px */
-        height: auto;
+        display: none !important;
     }
     
     header .disclaimer {
         font-size: 0.75em;
         padding-left: 0;
         padding-right: 0;
+        margin-top: 2em !important;
     }
     
     .input-section {
@@ -2610,6 +2627,12 @@ header ~ p a {
         width: 100%;
         box-sizing: border-box;
         margin-bottom: 0;
+    }
+
+    #single-publication-fields,
+    #multi-publication-fields {
+        padding-top: 1em;
+        padding-bottom: 1em;
     }
     
     form {
@@ -2897,6 +2920,22 @@ header ~ p a {
     #mobile-example-images img:not(:last-child) {
         margin-bottom: 10px;
     }
+
+    /* FAQ page mobile */
+    .faq-body p {
+        font-size: 0.75em;
+    }
+    .faq-body h3 {
+        font-size: 0.9em;
+    }
+    .faq-body h2 {
+        margin-bottom: 1em !important;
+    }
+    .faq-body {
+        padding-left: 15px !important;
+        padding-right: 15px !important;
+        padding-bottom: 20px !important;
+    }
 }
 
 /* Ensure desktop is not affected by mobile styles */
@@ -3022,5 +3061,35 @@ header ~ p a {
         overflow: hidden !important;
         min-height: 0 !important;
     }
+}
+
+/* FAQ page: back link styling */
+.faq-back-wrapper {
+    padding-top: 1em !important;
+}
+.faq-back-link {
+    color: #535353;
+}
+.faq-back-link:visited {
+    color: #535353;
+}
+
+/* FAQ page: body links styling */
+.faq-body a {
+    color: #0066CC;
+}
+.faq-body a:visited {
+    color: #0066CC;
+}
+
+/* FAQ page: space after paragraphs in main body */
+.faq-body h2 {
+    margin-bottom: 1.5em;
+}
+.faq-body p {
+    margin-bottom: 2em;
+}
+.faq-body p:last-child {
+    margin-bottom: 0;
 }
 

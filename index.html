@@ -27,6 +27,10 @@
             <p>turn your favorite Substack into a printable newspaper</p>
             <img src="logo.png" alt="Substack Print Logo" class="header-logo-mobile">
             <p class="disclaimer">This isn't affiliated with Substack HQ, it was made by artist & mischief-maker raw & feral. If you like it, you can support my art with a free or paid subscription to  <a href="https://rawandferal.substack.com" target="_blank" rel="noopener noreferrer">raw & feral</a>, where I write about creative shenanigans like this! Guide to use the Substack Print <a href="https://rawandferal.substack.com/substack-print" target="_blank" rel="noopener noreferrer">here.</a></p>
+            <p class="disclaimer-faq-link">
+                <img src="icons/FAQ.png" alt="" class="disclaimer-faq-icon">
+                <a href="/faq" class="disclaimer-faq-link-a">FAQs / Help!</a>
+            </p>
         </header>
         
         <div class="input-section">
@@ -85,10 +89,6 @@ https://rawandferal.substack.com/p/death-duel</textarea>
             <div id="error" class="error hidden"></div>
         </div>
         
-        <div id="mobile-message" class="mobile-only hidden">
-            <p>FYI the newspaper generation doesn't fully work on mobile :( so I'm just showing you a preview of your front page! Open this on desktop to generate and print your newspaper, I have an example of what this looks like below!</p>
-        </div>
-        
         <div id="newsletter-container" class="hidden">
             <div class="newsletter-controls">
                 <button onclick="printNewsletter();">Print/Save as PDF</button>
@@ -98,6 +98,9 @@ https://rawandferal.substack.com/p/death-duel</textarea>
             </div>
             <div id="newsletter" class="newsletter">
                 <!-- Newsletter content will be inserted here -->
+            </div>
+            <div id="mobile-message" class="mobile-only hidden">
+                <p>FYI the newspaper generation doesn't fully work on mobile :( so I'm just showing you a preview of your front page. Open this on desktop to generate and print your newspaper, I have an example of what this looks like below!</p>
             </div>
             <div id="mobile-example-label" class="mobile-only hidden">
                 <strong>Example Newsletter:</strong>
