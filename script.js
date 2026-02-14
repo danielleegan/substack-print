@@ -687,6 +687,61 @@ function cleanHTMLContent(html) {
             }
         });
     }
+
+    // Remove Substack audio embeds (they pull in duration text and "download")
+    const audioPlayers = Array.from(doc2.querySelectorAll('[data-component-name="AudioEmbedPlayer"], [aria-label="Audio embed player"]'));
+    if (audioPlayers.length > 0) {
+        const isEffectivelyEmpty = (el) => {
+            if (!el) return false;
+            const text = (el.textContent || '').replace(/\s+/g, '').trim();
+            if (text.length > 0) return false;
+            const meaningfulChild = el.querySelector('img, picture, svg, video, audio, source, iframe, embed, object, table, ul, ol, blockquote, pre, h1, h2, h3, h4, h5, h6');
+            return !meaningfulChild;
+        };
+
+        const removeEmptyParents = (startEl) => {
+            let current = startEl;
+            while (current && current !== doc2.body) {
+                const tag = (current.tagName || '').toUpperCase();
+                if (!['DIV', 'P', 'FIGURE', 'SECTION', 'ARTICLE'].includes(tag)) break;
+                if (!isEffectivelyEmpty(current)) break;
+                const parent = current.parentElement;
+                current.remove();
+                current = parent;
+            }
+        };
+
+        audioPlayers.forEach(player => {
+            if (!player || !player.parentElement) return;
+
+            const wrapperCandidates = [
+                player.closest('figure'),
+                player.closest('[data-component-name="AudioEmbed"]'),
+                player.closest('[data-component-name="AudioEmbedWithCaption"]'),
+                player.closest('[data-component-name="Embed"]'),
+            ].filter(Boolean);
+
+            let removed = false;
+            for (const wrapper of wrapperCandidates) {
+                if (!wrapper || wrapper === doc2.body) continue;
+                const clone = wrapper.cloneNode(true);
+                clone.querySelectorAll('[data-component-name="AudioEmbedPlayer"], [aria-label="Audio embed player"]').forEach(el => el.remove());
+                if (isEffectivelyEmpty(clone)) {
+                    const parent = wrapper.parentElement;
+                    wrapper.remove();
+                    removeEmptyParents(parent);
+                    removed = true;
+                    break;
+                }
+            }
+
+            if (!removed) {
+                const parent = player.parentElement;
+                player.remove();
+                removeEmptyParents(parent);
+            }
+        });
+    }
     
     // Handle links: keep images, remove link wrappers, convert text links to plain text
     // BUT PRESERVE FOOTNOTE SPANS - they were created in preprocessing and must be kept
