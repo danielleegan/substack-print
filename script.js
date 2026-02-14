@@ -744,7 +744,7 @@ function cleanHTMLContent(html) {
     }
 
     // Poetry / preformatted blocks: treat as normal text and remove the hide-text label
-    // Same processing flow as video/audio removal
+    // Two <br> in a row = stanza break (paragraph); normalize early into separate .poetry-block elements
     const preformattedBlocks = Array.from(doc2.querySelectorAll('[data-component-name="PreformattedTextBlockToDOM"], .preformatted-block'));
     preformattedBlocks.forEach(block => {
         if (!block || !block.parentNode) return;
@@ -765,8 +765,24 @@ function cleanHTMLContent(html) {
             div.className = 'poetry-block';
             div.innerHTML = block.innerHTML.replace(/\r?\n/g, '<br>');
             block.parentNode.replaceChild(div, block);
+            block = div;
         } else {
             block.classList.add('poetry-block');
+        }
+        // Split on two or more <br> in a row -> treat as paragraph (stanza) boundary
+        const html = block.innerHTML;
+        const stanzaChunks = html.split(/(?:<br\s*\/?>\s*){2,}/i).map(s => s.trim()).filter(s => s.length > 0);
+        if (stanzaChunks.length > 1) {
+            const parent = block.parentNode;
+            stanzaChunks.forEach(chunk => {
+                const stanzaDiv = doc2.createElement('div');
+                stanzaDiv.className = 'poetry-block poetry-stanza';
+                stanzaDiv.innerHTML = chunk;
+                parent.insertBefore(stanzaDiv, block);
+            });
+            block.remove();
+        } else if (stanzaChunks.length === 1) {
+            block.classList.add('poetry-stanza');
         }
     });
 

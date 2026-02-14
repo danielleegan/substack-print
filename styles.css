@@ -1388,6 +1388,11 @@ header ~ p a {
     margin-bottom: 1em;
 }
 
+/* Stanzas (split on double line break): extra separation between stanzas */
+.poetry-stanza + .poetry-stanza {
+    margin-top: 0.75em;
+}
+
 .article-columns-three-css p {
     margin-bottom: 0;
     text-align: justify;
