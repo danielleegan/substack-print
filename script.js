@@ -2471,6 +2471,43 @@ if (document.readyState === 'loading') {
     setupSafariPrintWorkaround();
 }
 
+// Anonymized user ID for tracking submission count per person (stored in localStorage)
+function getAnonymizedUserId() {
+    const key = 'sp_uid';
+    try {
+        let uid = localStorage.getItem(key);
+        if (!uid) {
+            uid = 'u_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+            localStorage.setItem(key, uid);
+        }
+        return uid;
+    } catch {
+        return '';
+    }
+}
+
+// Fire-and-forget: log submitted URL(s) to spreadsheet (Cloudflare Worker -> Google Sheets)
+// urlOrUrls: string (single) or array of strings (choose-articles: one row per URL)
+function logUrlSubmission(urlOrUrls, mode) {
+    if (!CLOUDFLARE_PROXY_URL || CLOUDFLARE_PROXY_URL.includes('YOUR_CLOUDFLARE')) return;
+    const logUrl = CLOUDFLARE_PROXY_URL.replace(/\/?$/, '') + '/log';
+    const payload = {
+        mode: mode || 'single',
+        timestamp: new Date().toISOString(),
+        user_id: getAnonymizedUserId()
+    };
+    if (Array.isArray(urlOrUrls)) {
+        payload.urls = urlOrUrls;
+    } else {
+        payload.url = urlOrUrls;
+    }
+    fetch(logUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    }).catch(() => {});
+}
+
 // Form submission handler
 document.getElementById('substack-form').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -2482,6 +2519,9 @@ document.getElementById('substack-form').addEventListener('submit', (e) => {
         const newspaperTitle = (document.getElementById('multi-newspaper-title')?.value || '').trim();
         if (!urlsString) return;
         
+        // Parse URLs and send each as a separate row in Google Sheets
+        const urlList = urlsString.split(/[\r\n]+/).map(s => s.trim()).filter(Boolean).map(u => normalizeURL(u)).filter(Boolean);
+        logUrlSubmission(urlList.length > 0 ? urlList : [urlsString], 'choose-articles');
         if (typeof posthog !== 'undefined') {
             posthog.capture('newsletter_requested', { url: 'choose-articles' });
         }
@@ -2494,6 +2534,7 @@ document.getElementById('substack-form').addEventListener('submit', (e) => {
     url = normalizeURL(url);
     if (!url) return;
     
+    logUrlSubmission(url, 'single');
     if (typeof posthog !== 'undefined') {
         posthog.capture('newsletter_requested', { url: url });
     }
