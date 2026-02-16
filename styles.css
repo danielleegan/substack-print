@@ -171,11 +171,27 @@ form {
     outline-offset: 2px;
 }
 
+.publication-mode-explanation {
+    font-size: 0.9em;
+    font-style: italic;
+    margin: 0 0 1em;
+    color: #535353;
+    text-align: center;
+}
+
+.input-section p.publication-mode-explanation {
+    margin-top: 0;
+    color: #535353;
+}
+
 @media screen and (max-width: 768px) {
     .publication-toggle {
         width: 100%;
         min-width: 0;
         max-width: 520px;
+    }
+    .input-section p.publication-mode-explanation {
+        font-size: 0.75em;
     }
 }
 

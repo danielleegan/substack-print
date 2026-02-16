@@ -5995,6 +5995,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const mode = getPublicationMode();
         const isMulti = mode === 'multi';
         
+        const explanationEl = document.getElementById('publication-mode-explanation');
+        if (explanationEl) {
+            explanationEl.textContent = isMulti
+                ? 'Select whatever articles you want'
+                : 'Pulls the three latest articles from one Substack publication';
+        }
+        
         if (singleFields) singleFields.classList.toggle('hidden', isMulti);
         if (multiFields) multiFields.classList.toggle('hidden', !isMulti);
         
